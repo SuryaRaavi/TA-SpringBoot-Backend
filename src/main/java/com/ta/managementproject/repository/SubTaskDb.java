@@ -1,8 +1,7 @@
 package com.ta.managementproject.repository;
 
-import com.ta.managementproject.dto.response.SubTaskResponseDTO;
-import com.ta.managementproject.dto.response.TaskResponseDTO;
-import com.ta.managementproject.entity.SubTask;
+import java.time.LocalDate;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,7 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import com.ta.managementproject.dto.response.SubTaskResponseDTO;
+import com.ta.managementproject.entity.SubTask;
 
 @Repository
 public interface SubTaskDb extends JpaRepository<SubTask, String> {
@@ -71,4 +71,7 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
             @Param("query") String query,
             Pageable pageable
     );
+
+    @Query("SELECT COUNT(st) FROM SubTask st WHERE st.task.taskId = :taskId")
+    Integer getTotalSubTask(@Param("taskId") String taskId);
 }
