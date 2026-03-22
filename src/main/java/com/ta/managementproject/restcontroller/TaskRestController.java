@@ -1,18 +1,18 @@
 package com.ta.managementproject.restcontroller;
 
-import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
-import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
-import com.ta.managementproject.dto.request.ReorderRequestDTO;
-import com.ta.managementproject.service.task.TaskService;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
+import com.ta.managementproject.dto.request.DeleteRequestDTO;
+import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.service.task.TaskService;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/stages/{stageId}/tasks")
@@ -39,10 +39,10 @@ public class TaskRestController{
 
             @RequestParam(required = false) String query
     ){
-        /**TODO:
-         Implementasikan service taskService.getAllTask sama taskService.searchTask
-         */
-        return null;
+        if (query != null && !query.isEmpty()) {
+            return taskService.searchTask(page, size, stageId, query);
+        }
+        return taskService.getAllTask(page, size, stageId, startDate, endDate);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -52,10 +52,7 @@ public class TaskRestController{
             @PathVariable String stageId,
             @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
-        /**TODO:
-         Implementasikan service taskService.addNewTask
-         */
-        return null;
+        return taskService.addNewTask(stageId, requestDTO);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -66,10 +63,7 @@ public class TaskRestController{
             @PathVariable String taskId,
             @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
-        /**TODO:
-         Implementasikan service taskService.updateTask
-         */
-        return null;
+        return taskService.updateTask(taskId, requestDTO);
     }
 
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
@@ -79,10 +73,7 @@ public class TaskRestController{
             @PathVariable String stageId,
             @PathVariable String taskId
     ){
-        /**TODO:
-         Implementasikan service taskService.getDetailTask
-         */
-        return null;
+        return taskService.getDetailTask(taskId);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -92,10 +83,7 @@ public class TaskRestController{
             @PathVariable String stageId,
             @RequestBody List<ReorderRequestDTO> requestDTOs
     ){
-        /**TODO:
-         Implementasikan service taskService.reorderTask
-         */
-        return null;
+        return taskService.reorderTask(stageId, requestDTOs);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -103,11 +91,8 @@ public class TaskRestController{
     public ResponseEntity<?> deleteSelectedTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
-            @RequestBody DeleteRequestDTO requestDTO
+            @RequestBody List<DeleteRequestDTO> requestDTO
     ){
-        /**TODO:
-         Implementasikan service taskService.deleteSelectedTask
-         */
-        return null;
+        return taskService.deleteSelectedTask(stageId, requestDTO);
     }
 }
