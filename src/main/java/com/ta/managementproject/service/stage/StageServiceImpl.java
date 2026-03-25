@@ -242,7 +242,7 @@ public class StageServiceImpl implements StageService{
 
     @Override
     @Transactional
-    public ResponseEntity<?> deleteStage(String projectId, DeleteRequestDTO requestDTO) {
+    public ResponseEntity<?> deleteStageById(String projectId, String stageId) {
         var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
 
         try{
@@ -256,7 +256,7 @@ public class StageServiceImpl implements StageService{
                 return new ResponseEntity<>(baseResponseDTO, HttpStatus.FORBIDDEN);
             }
 
-            stageDb.delete(stageDb.findByStageId(requestDTO.getId()));
+            stageDb.delete(stageDb.findByStageId(stageId));
 
             baseResponseDTO.setStatus(HttpStatus.OK.value());
             baseResponseDTO.setTimestamp(new Date());

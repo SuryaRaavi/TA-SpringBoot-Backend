@@ -20,7 +20,7 @@ public interface SubTaskService {
 
     ResponseEntity<?> getDetailSubTask(String subTaskId);
 
-    ResponseEntity<?> deleteSelectedSubTask(String taskId, List<DeleteRequestDTO> requestDTOList);
+    ResponseEntity<?> deleteSubTaskById(String taskId, String subTaskId);
 
     ResponseEntity<?> reorderSubTask(String taskId, List<ReorderRequestDTO> requestDTOList);
 }

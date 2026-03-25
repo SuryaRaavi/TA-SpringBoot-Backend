@@ -101,26 +101,31 @@ public class TaskServiceImpl implements TaskService {
         var baseResponseDTO = new BaseResponseDTO<Page<TaskResponseDTO>>();
         baseResponseDTO.setTimestamp(new Date());
 
-        if (!isAuthorizedForStage(stageId)) {
-            baseResponseDTO.setStatus(403);
-            baseResponseDTO.setMessage("Access Denied");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        try {
+            if (!isAuthorizedForStage(stageId)) {
+                baseResponseDTO.setStatus(403);
+                baseResponseDTO.setMessage("Access Denied");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+            }
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            Page<TaskResponseDTO> tasks;
+
+            if (startDate != null && endDate != null) {
+                tasks = taskDb.findTaskByStageIdAndDueDate(stageId, startDate, endDate, pageable);
+            } else {
+                tasks = taskDb.findTaskByStageId(stageId, pageable);
+            }
+
+            baseResponseDTO.setStatus(200);
+            baseResponseDTO.setMessage("Success");
+            baseResponseDTO.setData(tasks);
+            return ResponseEntity.ok(baseResponseDTO);
+        }catch(Exception e){
+            baseResponseDTO.setStatus(500);
+            baseResponseDTO.setMessage(String.format(e.getMessage()));
+            return ResponseEntity.internalServerError().body(baseResponseDTO);
         }
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<TaskResponseDTO> tasks;
-
-        if (startDate != null && endDate != null) {
-            tasks = taskDb.findTaskByStageIdAndDueDate(stageId, startDate, endDate, pageable);
-        } else {
-            tasks = taskDb.findTaskByStageId(stageId, pageable);
-        }
-
-        baseResponseDTO.setStatus(200);
-        baseResponseDTO.setMessage("Success");
-        baseResponseDTO.setData(tasks);
-        return ResponseEntity.ok(baseResponseDTO);
-
     }
 
     @Override
@@ -129,20 +134,25 @@ public class TaskServiceImpl implements TaskService {
         var baseResponseDTO = new BaseResponseDTO<Page<TaskResponseDTO>>();
         baseResponseDTO.setTimestamp(new Date());
 
-        if (!isAuthorizedForStage(stageId)) {
-            baseResponseDTO.setStatus(403);
-            baseResponseDTO.setMessage("Access Denied");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        try {
+            if (!isAuthorizedForStage(stageId)) {
+                baseResponseDTO.setStatus(403);
+                baseResponseDTO.setMessage("Access Denied");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+            }
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            Page<TaskResponseDTO> tasks = taskDb.searchTaskByQuery(stageId, query, pageable);
+
+            baseResponseDTO.setStatus(200);
+            baseResponseDTO.setMessage("Success");
+            baseResponseDTO.setData(tasks);
+            return ResponseEntity.ok(baseResponseDTO);
+        }catch(Exception e){
+            baseResponseDTO.setStatus(500);
+            baseResponseDTO.setMessage(String.format(e.getMessage()));
+            return ResponseEntity.internalServerError().body(baseResponseDTO);
         }
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<TaskResponseDTO> tasks = taskDb.searchTaskByQuery(stageId, query, pageable);
-
-        baseResponseDTO.setStatus(200);
-        baseResponseDTO.setMessage("Success");
-        baseResponseDTO.setData(tasks);
-        return ResponseEntity.ok(baseResponseDTO);
-
     }
 
     @Override
@@ -151,36 +161,41 @@ public class TaskServiceImpl implements TaskService {
         var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
         baseResponseDTO.setTimestamp(new Date());
 
-        if (!isProjectManager(stageId)) {
-            baseResponseDTO.setStatus(403);
-            baseResponseDTO.setMessage("Only Project Managers can add tasks");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        try {
+            if (!isProjectManager(stageId)) {
+                baseResponseDTO.setStatus(403);
+                baseResponseDTO.setMessage("Only Project Managers can add tasks");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+            }
+
+            Stage stage = stageDb.findById(stageId).orElseThrow();
+            Integer currentTotal = taskDb.getTotalTask(stageId);
+
+            Task newTask = Task.builder()
+                    .taskName(requestDTO.getTaskName())
+                    .description(requestDTO.getDescription())
+                    .priority(requestDTO.getPriority())
+                    .dueDate(requestDTO.getDueDate())
+                    .status(requestDTO.getStatus())
+                    .projectMember(requestDTO.getProjectMember())
+                    .hasSubTask(requestDTO.isHasSubTask())
+                    .stage(stage)
+                    .order(currentTotal + 1)
+                    .isDeleted(false)
+                    .build();
+
+            taskDb.save(newTask);
+
+            baseResponseDTO.setStatus(201);
+            baseResponseDTO.setMessage("Task created successfully");
+            baseResponseDTO.setData(new CrudResponseDTO(newTask.getTaskId(), java.time.LocalDateTime.now().toString()));
+            return ResponseEntity.ok(baseResponseDTO);
+        }catch(Exception e){
+            baseResponseDTO.setStatus(500);
+            baseResponseDTO.setMessage(String.format(e.getMessage()));
+            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
+            return ResponseEntity.internalServerError().body(baseResponseDTO);
         }
-
-        Stage stage = stageDb.findById(stageId).orElseThrow();
-        Integer currentTotal = taskDb.getTotalTask(stageId);
-
-        Task newTask = Task.builder()
-                .taskId(generateTaskId())
-                .taskName(requestDTO.getTaskName())
-                .description(requestDTO.getDescription())
-                .priority(requestDTO.getPriority())
-                .dueDate(requestDTO.getDueDate())
-                .status(requestDTO.getStatus())
-                .projectMember(requestDTO.getProjectMember())
-                .hasSubTask(requestDTO.isHasSubTask())
-                .stage(stage)
-                .order(currentTotal + 1)
-                .isDeleted(false)
-                .build();
-
-        taskDb.save(newTask);
-        
-        baseResponseDTO.setStatus(201);
-        baseResponseDTO.setMessage("Task created successfully");
-        baseResponseDTO.setData(new CrudResponseDTO(newTask.getTaskId(), java.time.LocalDateTime.now().toString()));
-        return ResponseEntity.ok(baseResponseDTO);
-
     }
 
     @Override
@@ -189,34 +204,40 @@ public class TaskServiceImpl implements TaskService {
         var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
         baseResponseDTO.setTimestamp(new Date());
 
-        Task task = taskDb.findById(taskId).orElse(null);
-        if (task == null) {
-            baseResponseDTO.setStatus(404);
-            baseResponseDTO.setMessage("Task not found");
-            return ResponseEntity.status(404).body(baseResponseDTO);
+        try {
+            Task task = taskDb.findById(taskId).orElse(null);
+            if (task == null) {
+                baseResponseDTO.setStatus(404);
+                baseResponseDTO.setMessage("Task not found");
+                return ResponseEntity.status(404).body(baseResponseDTO);
+            }
+
+            if (!isAuthorizedForStage(task.getStage().getStageId())) {
+                baseResponseDTO.setStatus(403);
+                baseResponseDTO.setMessage("Access Denied");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+            }
+
+            task.setTaskName(requestDTO.getTaskName());
+            task.setDescription(requestDTO.getDescription());
+            task.setPriority(requestDTO.getPriority());
+            task.setDueDate(requestDTO.getDueDate());
+            task.setStatus(requestDTO.getStatus());
+            task.setProjectMember(requestDTO.getProjectMember());
+            task.setHasSubTask(requestDTO.isHasSubTask());
+
+            taskDb.save(task);
+
+            baseResponseDTO.setStatus(200);
+            baseResponseDTO.setMessage("Task updated successfully");
+            baseResponseDTO.setData(new CrudResponseDTO(taskId, java.time.LocalDateTime.now().toString()));
+            return ResponseEntity.ok(baseResponseDTO);
+        }catch(Exception e){
+            baseResponseDTO.setStatus(500);
+            baseResponseDTO.setMessage(String.format(e.getMessage()));
+            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
+            return ResponseEntity.internalServerError().body(baseResponseDTO);
         }
-
-        if (!isAuthorizedForStage(task.getStage().getStageId())) {
-            baseResponseDTO.setStatus(403);
-            baseResponseDTO.setMessage("Access Denied");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
-        }
-
-        task.setTaskName(requestDTO.getTaskName());
-        task.setDescription(requestDTO.getDescription());
-        task.setPriority(requestDTO.getPriority());
-        task.setDueDate(requestDTO.getDueDate());
-        task.setStatus(requestDTO.getStatus());
-        task.setProjectMember(requestDTO.getProjectMember());
-        task.setHasSubTask(requestDTO.isHasSubTask());
-
-        taskDb.save(task);
-
-        baseResponseDTO.setStatus(200);
-        baseResponseDTO.setMessage("Task updated successfully");
-        baseResponseDTO.setData(new CrudResponseDTO(taskId, java.time.LocalDateTime.now().toString()));
-        return ResponseEntity.ok(baseResponseDTO);
-    
       }
 
 
@@ -226,87 +247,98 @@ public class TaskServiceImpl implements TaskService {
         var baseResponseDTO = new BaseResponseDTO<TaskDetailResponseDTO>();
         baseResponseDTO.setTimestamp(new Date());
 
-        Task task = taskDb.findById(taskId).orElse(null);
-        if (task == null) {
-            baseResponseDTO.setStatus(404);
-            baseResponseDTO.setMessage("Task not found");
-            return ResponseEntity.status(404).body(baseResponseDTO);
+        try {
+            Task task = taskDb.findById(taskId).orElse(null);
+            if (task == null) {
+                baseResponseDTO.setStatus(404);
+                baseResponseDTO.setMessage("Task not found");
+                return ResponseEntity.status(404).body(baseResponseDTO);
+            }
+
+            if (!isAuthorizedForStage(task.getStage().getStageId())) {
+                baseResponseDTO.setStatus(403);
+                baseResponseDTO.setMessage("Access Denied");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+            }
+
+            TaskDetailResponseDTO response = new TaskDetailResponseDTO(
+                    task.getTaskId(),
+                    task.getTaskName(),
+                    task.getDescription(),
+                    task.getPriority(),
+                    task.getLabel(),
+                    task.getDueDate(),
+                    task.getStatus(),
+                    task.getProjectMember() != null ? task.getProjectMember().getFullName() : "Unassigned",
+                    task.getCreatedAt()
+            );
+
+            baseResponseDTO.setStatus(200);
+            baseResponseDTO.setMessage("Success");
+            baseResponseDTO.setData(response);
+            return ResponseEntity.ok(baseResponseDTO);
+        }catch(Exception e){
+            baseResponseDTO.setStatus(500);
+            baseResponseDTO.setMessage(String.format(e.getMessage()));
+            return ResponseEntity.internalServerError().body(baseResponseDTO);
         }
-
-        if (!isAuthorizedForStage(task.getStage().getStageId())) {
-            baseResponseDTO.setStatus(403);
-            baseResponseDTO.setMessage("Access Denied");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
-        }
-
-        TaskDetailResponseDTO response = new TaskDetailResponseDTO(
-                task.getTaskId(),
-                task.getTaskName(),
-                task.getDescription(),
-                task.getPriority(),
-                task.getLabel(),
-                task.getDueDate(),
-                task.getStatus(),
-                task.getProjectMember() != null ? task.getProjectMember().getFullName() : "Unassigned",
-                task.getCreatedAt()
-        );
-
-        baseResponseDTO.setStatus(200);
-        baseResponseDTO.setMessage("Success");
-        baseResponseDTO.setData(response);
-        return ResponseEntity.ok(baseResponseDTO);
-
     }
 
     @Override
-    public ResponseEntity<?> deleteSelectedTask(String stageId, List<DeleteRequestDTO> requestDTOList) {
+    public ResponseEntity<?> deleteTaskById(String stageId, String taskId) {
 
         var baseResponseDTO = new BaseResponseDTO<Object>();
         baseResponseDTO.setTimestamp(new Date());
 
-        if (!isProjectManager(stageId)) {
-            baseResponseDTO.setStatus(403);
-            baseResponseDTO.setMessage("Access Denied");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        try {
+            if (!isProjectManager(stageId)) {
+                baseResponseDTO.setStatus(403);
+                baseResponseDTO.setMessage("Access Denied");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+            }
+
+            taskDb.deleteById(taskId);
+
+            baseResponseDTO.setStatus(200);
+            baseResponseDTO.setMessage("Tasks deleted successfully");
+            return ResponseEntity.ok(baseResponseDTO);
+        }catch(Exception e){
+            baseResponseDTO.setStatus(500);
+            baseResponseDTO.setMessage(String.format(e.getMessage()));
+            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
+            return ResponseEntity.internalServerError().body(baseResponseDTO);
         }
-
-        for (DeleteRequestDTO req : requestDTOList) {
-            taskDb.deleteById(req.getId());
-        }
-
-        baseResponseDTO.setStatus(200);
-        baseResponseDTO.setMessage("Tasks deleted successfully");
-        return ResponseEntity.ok(baseResponseDTO);
-
     }
 
     @Override
     public ResponseEntity<?> reorderTask(String stageId, List<ReorderRequestDTO> requestDTOList) {
-        var baseResponseDTO = new BaseResponseDTO<Object>();
+        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
         baseResponseDTO.setTimestamp(new Date());
 
-        if (!isProjectManager(stageId)) {
-            baseResponseDTO.setStatus(403);
-            baseResponseDTO.setMessage("Access Denied");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
-        }
-
-        for (ReorderRequestDTO req : requestDTOList) {
-            Optional<Task> taskOpt = taskDb.findById(req.getId());
-            if (taskOpt.isPresent()) {
-                Task task = taskOpt.get();
-                task.setOrder(req.getOrder()); 
-                taskDb.save(task);
+        try {
+            if (!isProjectManager(stageId)) {
+                baseResponseDTO.setStatus(403);
+                baseResponseDTO.setMessage("Access Denied");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
             }
+
+            for (ReorderRequestDTO req : requestDTOList) {
+                Optional<Task> taskOpt = taskDb.findById(req.getId());
+                if (taskOpt.isPresent()) {
+                    Task task = taskOpt.get();
+                    task.setOrder(req.getOrder());
+                    taskDb.save(task);
+                }
+            }
+
+            baseResponseDTO.setStatus(200);
+            baseResponseDTO.setMessage("Tasks reordered successfully");
+            return ResponseEntity.ok(baseResponseDTO);
+        }catch(Exception e){
+            baseResponseDTO.setStatus(500);
+            baseResponseDTO.setMessage(String.format(e.getMessage()));
+            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
+            return ResponseEntity.internalServerError().body(baseResponseDTO);
         }
-
-        baseResponseDTO.setStatus(200);
-        baseResponseDTO.setMessage("Tasks reordered successfully");
-        return ResponseEntity.ok(baseResponseDTO);
-        
-    }
-
-    private String generateTaskId(){
-        return "TSK" + "-" + String.valueOf(System.currentTimeMillis());
     }
 }

@@ -87,12 +87,12 @@ public class TaskRestController{
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @PatchMapping("")
-    public ResponseEntity<?> deleteSelectedTask(
+    @PatchMapping("/{taskId}")
+    public ResponseEntity<?> deleteTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
-            @RequestBody List<DeleteRequestDTO> requestDTO
+            @PathVariable String taskId
     ){
-        return taskService.deleteSelectedTask(stageId, requestDTO);
+        return taskService.deleteTaskById(stageId, taskId);
     }
 }

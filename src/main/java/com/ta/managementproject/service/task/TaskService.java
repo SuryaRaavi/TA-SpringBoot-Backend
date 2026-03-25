@@ -20,7 +20,7 @@ public interface TaskService {
 
     ResponseEntity<?> getDetailTask(String taskId);
 
-    ResponseEntity<?> deleteSelectedTask(String stageId, List<DeleteRequestDTO> requestDTOList);
+    ResponseEntity<?> deleteTaskById(String stageId, String taskId);
 
     ResponseEntity<?> reorderTask(String stageId, List<ReorderRequestDTO> requestDTOList);
 }

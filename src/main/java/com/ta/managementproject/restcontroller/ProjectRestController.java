@@ -61,9 +61,9 @@ public class ProjectRestController {
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @DeleteMapping("")
-    public ResponseEntity<?> deleteSelectedProject(@RequestBody List<DeleteRequestDTO> requestDTO){
-        return projectService.deleteProject(requestDTO);
+    @DeleteMapping("/{projectId}")
+    public ResponseEntity<?> deleteProject(@PathVariable String projectId){
+        return projectService.deleteProjectById(projectId);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -100,5 +100,10 @@ public class ProjectRestController {
             @PathVariable String username
     ){
         return projectService.deleteProjectMemberFromProject(projectId, username);
+    }
+
+    @GetMapping("/{projectId}/statistics")
+    public ResponseEntity<?> getStatistics(@PathVariable String projectId){
+        return projectService.getProjectStatistics(projectId);
     }
 }

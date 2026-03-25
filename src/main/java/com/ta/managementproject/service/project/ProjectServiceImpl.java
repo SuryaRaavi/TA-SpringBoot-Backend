@@ -270,7 +270,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ResponseEntity<?> deleteProject(List<DeleteRequestDTO> requestDTOs) {
+    public ResponseEntity<?> deleteProjectById(String projectId) {
         var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
 
         try{
@@ -286,11 +286,9 @@ public class ProjectServiceImpl implements ProjectService {
             User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
 
 
-            for (DeleteRequestDTO r: requestDTOs){
-                Project project = projectDb.findByProjectId(r.getId());
-                if (project.getProjectManager().getUsername().equals(user.getUsername())){
-                    projectDb.delete(project);
-                }
+            Project project = projectDb.findByProjectId(projectId);
+            if (project.getProjectManager().getUsername().equals(user.getUsername())){
+                projectDb.delete(project);
             }
 
             baseResponseDTO.setStatus(HttpStatus.OK.value());
@@ -564,7 +562,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ResponseEntity<?> getProjectStatistic(String projectId) {
+    public ResponseEntity<?> getProjectStatistics(String projectId) {
         var baseResponseDTO = new BaseResponseDTO<ProgressResponseDTO>();
 
         try{

@@ -92,13 +92,13 @@ public class SubTaskRestController {
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @PatchMapping("")
+    @PatchMapping("/{subTaskId}")
     public ResponseEntity<?> deleteSubTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @RequestBody List<DeleteRequestDTO> requestDTOList
+            @PathVariable String subTaskId
     ){
-        return subTaskService.deleteSelectedSubTask(taskId, requestDTOList);
+        return subTaskService.deleteSubTaskById(taskId, subTaskId);
     }
 }

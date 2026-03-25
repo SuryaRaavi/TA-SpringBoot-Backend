@@ -12,7 +12,7 @@ public interface ProjectService {
     ResponseEntity<?> addNewProject(CreateUpdateProjectRequestDTO request);
     ResponseEntity<?> updateProject(String projectId, CreateUpdateProjectRequestDTO request);
     ResponseEntity<?> getProjectDetail(String projectId);
-    ResponseEntity<?> deleteProject(List<DeleteRequestDTO> request);
+    ResponseEntity<?> deleteProjectById(String projectId);
     ResponseEntity<?> searchProject(int page, int size, String parameter);
 
     ResponseEntity<?> generateJoinCode(String kodeProyek);
@@ -25,5 +25,5 @@ public interface ProjectService {
 
     ResponseEntity<?> deleteProjectMemberFromProject(String projectId, String username);
 
-    ResponseEntity<?> getProjectStatistic(String projectId);
+    ResponseEntity<?> getProjectStatistics(String projectId);
 }
