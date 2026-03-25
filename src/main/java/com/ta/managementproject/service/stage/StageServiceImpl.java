@@ -93,7 +93,6 @@ public class StageServiceImpl implements StageService{
             }
 
             Stage newStage = Stage.builder()
-                    .stageId(generateStageId())
                     .stageName(requestDTO.getStageName())
                     .description(requestDTO.getDescription())
                     .createdAt(LocalDateTime.now())
@@ -271,9 +270,5 @@ public class StageServiceImpl implements StageService{
             baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
             return new ResponseEntity<>(baseResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-    }
-
-    private String generateStageId(){
-        return "STG" + "-" + String.valueOf(System.currentTimeMillis());
     }
 }

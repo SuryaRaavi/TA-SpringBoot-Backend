@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
 
@@ -21,7 +22,9 @@ import java.time.LocalDate;
 @Builder(toBuilder = true)
 public class SubTask {
     @Id
-    @Column(name = "sub_task_id")
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "sub_task_id", updatable = false, nullable = false)
     private String subTaskId;
 
     @Column(name = "sub_task_name", nullable = false)

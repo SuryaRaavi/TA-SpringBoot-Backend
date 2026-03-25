@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,7 +26,9 @@ import java.util.List;
 @Builder(toBuilder = true)
 public class Stage {
     @Id
-    @Column(name = "stage_id")
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "stage_id", updatable = false, nullable = false)
     private String stageId;
 
     @Column(name = "stage_name", nullable = false)

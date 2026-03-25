@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,7 +27,9 @@ import java.util.List;
 @Builder(toBuilder = true)
 public class Project {
     @Id
-    @Column(name = "project_id")
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "project_id", updatable = false, nullable = false)
     private String projectId;
 
     @Column(name = "project_name", nullable = false)

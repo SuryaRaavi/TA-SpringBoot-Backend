@@ -135,12 +135,10 @@ public class ProjectServiceImpl implements ProjectService {
             }
 
             ProjectManager pm = projectManagerDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
-            String projectId = generateProjectId();
 
             Project newProyek = Project
                             .builder()
                             .projectName(requestDTO.getProjectName())
-                            .projectId(projectId)
                             .description(requestDTO.getDescription())
                             .projectManager(pm)
                             .status("NOT_STARTED")
@@ -149,12 +147,12 @@ public class ProjectServiceImpl implements ProjectService {
                             .createdAt(LocalDateTime.now(ZoneId.of("Asia/Jakarta")))
                             .build();
 
-            projectDb.save(newProyek);
+            newProyek = projectDb.save(newProyek);
 
             UserInProject userInProject = UserInProject
                     .builder()
                     .user(pm)
-                    .project(projectDb.findByProjectId(projectId))
+                    .project(projectDb.findByProjectId(newProyek.getProjectId()))
                     .build();
 
             userInProjectDb.save(userInProject);
@@ -615,8 +613,4 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-
-    private String generateProjectId(){
-        return "PRJ" + "-" + String.valueOf(System.currentTimeMillis());
-    }
 }

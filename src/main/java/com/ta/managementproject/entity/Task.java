@@ -1,17 +1,15 @@
 package com.ta.managementproject.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.CascadeType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.*;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,7 +27,9 @@ import java.util.List;
 public class Task {
 
     @Id
-    @Column(name = "task_id")
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "task_id", updatable = false, nullable = false)
     private String taskId;
 
     @Column(name = "task_name", nullable = false)

@@ -102,7 +102,7 @@ public class SubTaskRestController {
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
     @PatchMapping("")
-    public ResponseEntity<?> deleteSelectedTask(
+    public ResponseEntity<?> deleteSubTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,

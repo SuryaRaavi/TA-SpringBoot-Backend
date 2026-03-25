@@ -42,7 +42,7 @@ public class StageRestController {
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @PatchMapping("")
+    @DeleteMapping("")
     public ResponseEntity<?> deleteStage(@PathVariable String projectId, @RequestBody DeleteRequestDTO requestDTO){
         return stageService.deleteStage(projectId, requestDTO);
     }
