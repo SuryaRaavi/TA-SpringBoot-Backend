@@ -1,15 +1,18 @@
 package com.ta.managementproject.restcontroller;
 
-import com.ta.managementproject.dto.request.*;
-import com.ta.managementproject.service.task.SubTaskService;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
+import com.ta.managementproject.dto.request.DeleteRequestDTO;
+import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.service.task.SubTaskService;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/stages/{stageId}/tasks/{taskId}/subtasks")
@@ -37,10 +40,10 @@ public class SubTaskRestController {
 
             @RequestParam(required = false) String query
     ){
-        /**TODO:
-         Implementasikan service subTaskService.getAllSubTask sama subTaskService.searchSubTask
-         */
-        return null;
+        if (query != null && !query.isEmpty()) {
+            return subTaskService.searchSubTask(page, size, taskId, query);
+        }
+        return subTaskService.getAllSubTask(page, size, taskId, startDate, endDate);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -51,10 +54,7 @@ public class SubTaskRestController {
             @PathVariable String taskId,
             @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
-        /**TODO:
-         Implementasikan service subTaskService.addNewSubTask
-         */
-        return null;
+        return subTaskService.addNewSubTask(taskId, requestDTO);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -66,10 +66,7 @@ public class SubTaskRestController {
             @PathVariable String subTaskId,
             @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
-        /**TODO:
-         Implementasikan service subTaskService.updateSubTask
-         */
-        return null;
+        return subTaskService.updateSubTask(subTaskId, requestDTO);
     }
 
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
@@ -80,10 +77,7 @@ public class SubTaskRestController {
             @PathVariable String taskId,
             @PathVariable String subTaskId
     ){
-        /**TODO:
-         Implementasikan service subTaskService.getDetailSubTask
-         */
-        return null;
+        return subTaskService.getDetailSubTask(subTaskId);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -94,10 +88,7 @@ public class SubTaskRestController {
             @PathVariable String taskId,
             @RequestBody List<ReorderRequestDTO> requestDTOs
     ){
-        /**TODO:
-         Implementasikan service subTaskService.reorderSubTask
-         */
-        return null;
+        return subTaskService.reorderSubTask(taskId, requestDTOs);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -106,11 +97,8 @@ public class SubTaskRestController {
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @RequestBody DeleteRequestDTO requestDTO
+            @RequestBody List<DeleteRequestDTO> requestDTOList
     ){
-        /**TODO:
-         Implementasikan service subTaskService.deleteSelectedSubTask
-         */
-        return null;
+        return subTaskService.deleteSelectedSubTask(taskId, requestDTOList);
     }
 }

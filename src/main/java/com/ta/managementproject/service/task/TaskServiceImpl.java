@@ -1,5 +1,20 @@
 package com.ta.managementproject.service.task;
 
+import java.time.LocalDate;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
 import com.ta.managementproject.dto.request.DeleteRequestDTO;
@@ -7,20 +22,18 @@ import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.TaskDetailResponseDTO;
 import com.ta.managementproject.dto.response.TaskResponseDTO;
-import com.ta.managementproject.repository.*;
+import com.ta.managementproject.entity.Project;
+import com.ta.managementproject.entity.Stage;
+import com.ta.managementproject.entity.Task;
+import com.ta.managementproject.repository.MemberInProjectDb;
+import com.ta.managementproject.repository.ProjectDb;
+import com.ta.managementproject.repository.ProjectManagerDb;
+import com.ta.managementproject.repository.ProjectMemberDb;
+import com.ta.managementproject.repository.StageDb;
+import com.ta.managementproject.repository.TaskDb;
 import com.ta.managementproject.security.util.JwtUtils;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
 
 
 @Service
@@ -40,6 +53,9 @@ public class TaskServiceImpl implements TaskService {
     private ProjectDb projectDb;
 
     @Autowired
+    private StageDb stageDb;
+
+    @Autowired
     private JwtUtils jwtUtils;
 
     @Autowired
@@ -48,132 +64,246 @@ public class TaskServiceImpl implements TaskService {
     @Autowired
     private MemberInProjectDb memberInProjectDb;
 
+    
+    private String getUsernameFromToken() {
+
+        return jwtUtils.getUserNameFromRequest(request);
+
+    }
+
+    private boolean isAuthorizedForStage(String stageId) {
+
+        String username = getUsernameFromToken();
+        Optional<Stage> stageOpt = stageDb.findById(stageId);
+        if (stageOpt.isEmpty()) return false;
+
+        Project project = stageOpt.get().getProject();
+        
+        if (project.getProjectManager().getUsername().equals(username)) return true;
+
+        return memberInProjectDb.findByProjectIdAndUsername(project.getProjectId(), username) != null;
+
+    }
+
+    private boolean isProjectManager(String stageId) {
+
+        String username = getUsernameFromToken();
+        Optional<Stage> stageOpt = stageDb.findById(stageId);
+
+        if (stageOpt.isEmpty()) return false;
+        return stageOpt.get().getProject().getProjectManager().getUsername().equals(username);
+
+    }
 
     @Override
     public ResponseEntity<?> getAllTask(int page, int size, String stageId, LocalDate startDate, LocalDate endDate) {
 
         var baseResponseDTO = new BaseResponseDTO<Page<TaskResponseDTO>>();
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("createdAt").descending()
-        );
+        baseResponseDTO.setTimestamp(new Date());
 
-        /**TODO:
-         => Validasi apakah username untuk project manager dan project member berhak akses task berdasarkan stage id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasinya tinggal ambil objek stage berdasarkan stageId, dan ambil project dari stage.
-            Dari objek project tinggal cek aja username project managernya sama project member nya apakah masuk ke project tsb.
-         => Implementasikan fungsi repository findTaskByStageId dan findStageByStageIdAndDueDate (untuk filtering)
-         => Kembaliannya itu ResponseEntity<BaseResponseDTO<Page<TaskResponseDTO>>>
-         */
-        return null;
+        if (!isAuthorizedForStage(stageId)) {
+            baseResponseDTO.setStatus(403);
+            baseResponseDTO.setMessage("Access Denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<TaskResponseDTO> tasks;
+
+        if (startDate != null && endDate != null) {
+            tasks = taskDb.findTaskByStageIdAndDueDate(stageId, startDate, endDate, pageable);
+        } else {
+            tasks = taskDb.findTaskByStageId(stageId, pageable);
+        }
+
+        baseResponseDTO.setStatus(200);
+        baseResponseDTO.setMessage("Success");
+        baseResponseDTO.setData(tasks);
+        return ResponseEntity.ok(baseResponseDTO);
+
     }
 
     @Override
     public ResponseEntity<?> searchTask(int page, int size, String stageId, String query) {
+
         var baseResponseDTO = new BaseResponseDTO<Page<TaskResponseDTO>>();
+        baseResponseDTO.setTimestamp(new Date());
 
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("createdAt").descending()
-        );
+        if (!isAuthorizedForStage(stageId)) {
+            baseResponseDTO.setStatus(403);
+            baseResponseDTO.setMessage("Access Denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        }
 
-        /**TODO:
-         => Validasi apakah username untuk project manager dan project member berhak akses task berdasarkan stage id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasinya tinggal ambil objek stage berdasarkan stageId, dan ambil project dari stage.
-            Dari objek project tinggal cek aja username project managernya sama project member apakah masuk ke project tsb.
-         => Implementasikan fungsi repository searchTaskByQuery
-         => Kembaliannya itu ResponseEntity<BaseResponseDTO<Page<TaskResponseDTO>>>
-         */
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<TaskResponseDTO> tasks = taskDb.searchTaskByQuery(stageId, query, pageable);
 
-        return null;
+        baseResponseDTO.setStatus(200);
+        baseResponseDTO.setMessage("Success");
+        baseResponseDTO.setData(tasks);
+        return ResponseEntity.ok(baseResponseDTO);
+
     }
 
     @Override
     public ResponseEntity<?> addNewTask(String stageId, CreateUpdateTaskRequestDTO requestDTO) {
-        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
 
-        /**TODO:
-         => Validasi juga apakah username untuk project manager berhak menambahkan task berdasarkan stage id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasinya tinggal ambil objek stage berdasarkan stageId, dan ambil project dari stage.
-            Dari objek project tinggal cek aja username project managernya apakah masuk ke project tsb.
-         => Implementasikan mekanisme untuk add task baru (Task Id nya bisa pake func generateTaskId)
-         => Kembaliannya itu ResponseEntity<BaseResponseDTO<CrudResponseDTO>>
-         */
-        return null;
+        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
+        baseResponseDTO.setTimestamp(new Date());
+
+        if (!isProjectManager(stageId)) {
+            baseResponseDTO.setStatus(403);
+            baseResponseDTO.setMessage("Only Project Managers can add tasks");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        }
+
+        Stage stage = stageDb.findById(stageId).orElseThrow();
+        Integer currentTotal = taskDb.getTotalTask(stageId);
+
+        Task newTask = Task.builder()
+                .taskId(generateTaskId())
+                .taskName(requestDTO.getTaskName())
+                .description(requestDTO.getDescription())
+                .priority(requestDTO.getPriority())
+                .dueDate(requestDTO.getDueDate())
+                .status(requestDTO.getStatus())
+                .projectMember(requestDTO.getProjectMember())
+                .hasSubTask(requestDTO.isHasSubTask())
+                .stage(stage)
+                .order(currentTotal + 1)
+                .isDeleted(false)
+                .build();
+
+        taskDb.save(newTask);
+        
+        baseResponseDTO.setStatus(201);
+        baseResponseDTO.setMessage("Task created successfully");
+        baseResponseDTO.setData(new CrudResponseDTO(newTask.getTaskId(), java.time.LocalDateTime.now().toString()));
+        return ResponseEntity.ok(baseResponseDTO);
+
     }
 
     @Override
     public ResponseEntity<?> updateTask(String taskId, CreateUpdateTaskRequestDTO requestDTO) {
+
         var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
+        baseResponseDTO.setTimestamp(new Date());
 
-        /**TODO:
-         => Validasi apakah username untuk project manager berhak update task berdasarkan task id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasi project managernya tinggal ambil objek stage berdasarkan stageId, dan ambil project dari stage.
-            Dari objek project tinggal cek aja username project managernya siapa.
-         => Validasi apakah username untuk project member berhak update task berdasarkan task id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasi project membernya tinggal ambil objek task berdasarkan task id.
-            Dari objek task tinggal cek aja username project membernya siapa.
-         => Implementasikan mekanisme untuk update task
-         => Kembaliannya itu ResponseEntity<BaseResponseDTO<CrudResponseDTO>>
-         */
+        Task task = taskDb.findById(taskId).orElse(null);
+        if (task == null) {
+            baseResponseDTO.setStatus(404);
+            baseResponseDTO.setMessage("Task not found");
+            return ResponseEntity.status(404).body(baseResponseDTO);
+        }
 
-        return null;
-    }
+        if (!isAuthorizedForStage(task.getStage().getStageId())) {
+            baseResponseDTO.setStatus(403);
+            baseResponseDTO.setMessage("Access Denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        }
+
+        task.setTaskName(requestDTO.getTaskName());
+        task.setDescription(requestDTO.getDescription());
+        task.setPriority(requestDTO.getPriority());
+        task.setDueDate(requestDTO.getDueDate());
+        task.setStatus(requestDTO.getStatus());
+        task.setProjectMember(requestDTO.getProjectMember());
+        task.setHasSubTask(requestDTO.isHasSubTask());
+
+        taskDb.save(task);
+
+        baseResponseDTO.setStatus(200);
+        baseResponseDTO.setMessage("Task updated successfully");
+        baseResponseDTO.setData(new CrudResponseDTO(taskId, java.time.LocalDateTime.now().toString()));
+        return ResponseEntity.ok(baseResponseDTO);
+    
+      }
 
 
     @Override
     public ResponseEntity<?> getDetailTask(String taskId) {
-        var baseResponseDTO = new BaseResponseDTO<TaskDetailResponseDTO>();
 
-        /**TODO:
-         => Validasi apakah username untuk project manager dan project member berhak akses task berdasarkan task id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasinya tinggal ambil objek stage berdasarkan stageId, dan ambil project dari stage.
-            Dari objek project tinggal cek aja username project managernya sama apakah project member nya masuk ke project tsb.
-         => Implementasikan mekanisme untuk cek detail task
-         => Kembaliannya itu ResponseEntity<BaseResponseDTO<TaskDetailResponseDTO>>
-         */
-        return null;
+        var baseResponseDTO = new BaseResponseDTO<TaskDetailResponseDTO>();
+        baseResponseDTO.setTimestamp(new Date());
+
+        Task task = taskDb.findById(taskId).orElse(null);
+        if (task == null) {
+            baseResponseDTO.setStatus(404);
+            baseResponseDTO.setMessage("Task not found");
+            return ResponseEntity.status(404).body(baseResponseDTO);
+        }
+
+        if (!isAuthorizedForStage(task.getStage().getStageId())) {
+            baseResponseDTO.setStatus(403);
+            baseResponseDTO.setMessage("Access Denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        }
+
+        TaskDetailResponseDTO response = new TaskDetailResponseDTO(
+                task.getTaskId(),
+                task.getTaskName(),
+                task.getDescription(),
+                task.getPriority(),
+                task.getLabel(),
+                task.getDueDate(),
+                task.getStatus(),
+                task.getProjectMember() != null ? task.getProjectMember().getFullName() : "Unassigned",
+                task.getCreatedAt()
+        );
+
+        baseResponseDTO.setStatus(200);
+        baseResponseDTO.setMessage("Success");
+        baseResponseDTO.setData(response);
+        return ResponseEntity.ok(baseResponseDTO);
+
     }
 
     @Override
     public ResponseEntity<?> deleteSelectedTask(String stageId, List<DeleteRequestDTO> requestDTOList) {
-        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
 
-        /**TODO:
-         => Validasi apakah username untuk project manager berhak delete task berdasarkan stage id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasinya tinggal ambil objek stage berdasarkan stageId, dan ambil project dari stage.
-            Dari objek project tinggal cek aja username project managernya siapa.
-         => Implementasikan mekanisme untuk delete lebih dari satu task
-         => Kembaliannya itu ResponseEntity<BaseResponseDTO<CrudResponseDTO>>
-         */
+        var baseResponseDTO = new BaseResponseDTO<Object>();
+        baseResponseDTO.setTimestamp(new Date());
 
-        return null;
+        if (!isProjectManager(stageId)) {
+            baseResponseDTO.setStatus(403);
+            baseResponseDTO.setMessage("Access Denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        }
+
+        for (DeleteRequestDTO req : requestDTOList) {
+            taskDb.deleteById(req.getId());
+        }
+
+        baseResponseDTO.setStatus(200);
+        baseResponseDTO.setMessage("Tasks deleted successfully");
+        return ResponseEntity.ok(baseResponseDTO);
+
     }
 
     @Override
     public ResponseEntity<?> reorderTask(String stageId, List<ReorderRequestDTO> requestDTOList) {
-        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
+        var baseResponseDTO = new BaseResponseDTO<Object>();
+        baseResponseDTO.setTimestamp(new Date());
 
-        /**TODO:
-         => Validasi apakah username untuk project manager berhak reorder task berdasarkan stage id tsb (
-            Contohnya ada di service project sama stage)
-         => Validasinya tinggal ambil objek stage berdasarkan stageId, dan ambil project dari stage.
-            Dari objek project tinggal cek aja username project managernya siapa.
-         => Implementasikan mekanisme untuk reorder task (Mekanismenya sama kayak update task cuman
-            klo ini yang diupdate order nya aja)
-         => Kembaliannya itu ResponseEntity<BaseResponseDTO<CrudResponseDTO>>
-         */
+        if (!isProjectManager(stageId)) {
+            baseResponseDTO.setStatus(403);
+            baseResponseDTO.setMessage("Access Denied");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
+        }
 
-        return null;
+        for (ReorderRequestDTO req : requestDTOList) {
+            Optional<Task> taskOpt = taskDb.findById(req.getId());
+            if (taskOpt.isPresent()) {
+                Task task = taskOpt.get();
+                task.setOrder(req.getOrder()); 
+                taskDb.save(task);
+            }
+        }
+
+        baseResponseDTO.setStatus(200);
+        baseResponseDTO.setMessage("Tasks reordered successfully");
+        return ResponseEntity.ok(baseResponseDTO);
+        
     }
 
     private String generateTaskId(){
