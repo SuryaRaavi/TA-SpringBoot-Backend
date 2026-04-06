@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -27,4 +29,8 @@ public class MemberInProject {
     @JoinColumn(name = "project", nullable = false)
     @JsonBackReference
     private Project project;
+
+    // created at untuk project
+    @Column(name = "created_at")
+    private Instant createdAt;
 }

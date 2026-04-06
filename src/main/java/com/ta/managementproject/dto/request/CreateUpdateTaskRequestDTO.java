@@ -9,7 +9,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 
-import java.time.LocalDate;
+import java.time.Instant;
+
 
 
 @AllArgsConstructor
@@ -22,7 +23,7 @@ public class CreateUpdateTaskRequestDTO {
 
     private Integer priority;
 
-    private LocalDate dueDate;
+    private Instant dueDate;
 
     private String status;
 

@@ -1,7 +1,6 @@
 package com.ta.managementproject.restcontroller;
 
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.service.project.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -9,8 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.util.List;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -27,18 +25,22 @@ public class ProjectRestController {
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate startDate,
+            Instant startDate,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate endDate,
+            Instant endDate,
 
-            @RequestParam(required = false) String search
+            @RequestParam(required = false) String search,
+
+            @RequestParam(required = false) String sortingColumn,
+
+            @RequestParam(required = false) String orderDirection
     ){
         if (search == null){
-            return projectService.getAllProject(page, size, startDate, endDate);
+            return projectService.getAllProject(page, size, startDate, endDate, sortingColumn, orderDirection);
         }else{
-            return projectService.searchProject(page, size, search);
+            return projectService.searchProject(page, size, search, sortingColumn, orderDirection);
         }
     }
 
@@ -85,12 +87,14 @@ public class ProjectRestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "4") int size,
             @RequestParam(required = false) Integer role,
-            @RequestParam(required = false) String searchQuery
+            @RequestParam(required = false) String searchQuery,
+            @RequestParam(required = false, defaultValue = "createdAt") String sortingColumn,
+            @RequestParam(required = false, defaultValue = "descending") String orderDirection
     ){
         if (searchQuery != null){
-            return projectService.searchUserInProject(projectId, searchQuery, page, size);
+            return projectService.searchUserInProject(projectId, searchQuery, page, size, sortingColumn, orderDirection);
         }
-        return projectService.getUsersInProject(projectId, page, size, role);
+        return projectService.getUsersInProject(projectId, page, size, role, sortingColumn, orderDirection);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")

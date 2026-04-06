@@ -12,7 +12,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,13 +42,11 @@ public class User {
 
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted;

@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.time.Instant;
 
 @Data
 @AllArgsConstructor
@@ -18,11 +18,15 @@ public class TaskResponseDTO {
 
     private Integer priority;
 
-    private LocalDate dueDate;
+    private Instant dueDate;
 
     private String status;
 
     private String projectMemberName;
 
     private String label;
+
+    private Instant createdAt;
+
+    private Integer order;
 }

@@ -17,8 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import java.util.Date;
 
 @Service
@@ -72,7 +71,7 @@ public class UserServiceImpl implements UserService{
                         .username(username)
                         .password(aesUtil.encrypt(password))
                         .fullName(fullName)
-                        .createdAt(LocalDateTime.now(ZoneId.of("Asia/Jakarta")))
+                        .createdAt(Instant.now())
                         .build();
 
                 newUser = projectManager;
@@ -82,7 +81,7 @@ public class UserServiceImpl implements UserService{
                         .username(username)
                         .password(aesUtil.encrypt(password))
                         .fullName(fullName)
-                        .createdAt(LocalDateTime.now(ZoneId.of("Asia/Jakarta")))
+                        .createdAt(Instant.now())
                         .build();
 
                 newUser = projectMember;

@@ -1,6 +1,6 @@
 package com.ta.managementproject.repository;
 
-import java.time.LocalDate;
+import java.time.Instant;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +22,9 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
                       st.dueDate,
                       st.status,
                       st.label,
-                      st.projectMember.fullName
+                      st.projectMember.fullName,
+                      st.createdAt,
+                      st.order
                     )
                     FROM SubTask st
                         WHERE st.task.taskId = :taskId
@@ -36,7 +38,9 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
                       st.dueDate,
                       st.status,
                       st.label,
-                      st.projectMember.fullName
+                      st.projectMember.fullName,
+                      st.createdAt,
+                      st.order
                     )
                     FROM SubTask st
                         WHERE st.task.taskId = :taskId
@@ -44,8 +48,8 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
             """)
     Page<SubTaskResponseDTO> findSubTaskByTaskIdAndDueDate(
             @Param("taskId") String taskId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             Pageable pageable
     );
 
@@ -56,7 +60,9 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
                       st.dueDate,
                       st.status,
                       st.label,
-                      st.projectMember.fullName
+                      st.projectMember.fullName,
+                      st.createdAt,
+                      st.order
             )
             FROM SubTask st
                 WHERE st.task.taskId = :taskId

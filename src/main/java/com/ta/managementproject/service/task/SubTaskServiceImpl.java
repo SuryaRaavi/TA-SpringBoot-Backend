@@ -1,6 +1,6 @@
 package com.ta.managementproject.service.task;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.SubTaskDetailResponseDTO;
@@ -51,6 +50,8 @@ public class SubTaskServiceImpl implements SubTaskService{
     @Autowired
     private HttpServletRequest request;
 
+    private static List<String> SUBTASK_COLUMNS = List.of("subTaskName", "createdAt", "order", "dueDate");
+
     private String getUsernameFromRequest() {
         return jwtUtils.getUserNameFromRequest(request);
     }
@@ -74,7 +75,15 @@ public class SubTaskServiceImpl implements SubTaskService{
     }
 
     @Override
-    public ResponseEntity<?> getAllSubTask(int page, int size, String taskId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getAllSubTask(
+            int page,
+            int size,
+            String taskId,
+            Instant startDate,
+            Instant endDate,
+            String sortingColumn,
+            String orderDirection
+    ) {
         
         var baseResponseDTO = new BaseResponseDTO<Page<SubTaskResponseDTO>>();
         baseResponseDTO.setTimestamp(new Date());
@@ -86,7 +95,28 @@ public class SubTaskServiceImpl implements SubTaskService{
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
             }
 
-            Pageable pageable = PageRequest.of(page, size, Sort.by("order").ascending());
+            if (!SUBTASK_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
+
             Page<SubTaskResponseDTO> subTasks;
 
             if (startDate != null && endDate != null) {
@@ -107,7 +137,14 @@ public class SubTaskServiceImpl implements SubTaskService{
     }
 
     @Override
-    public ResponseEntity<?> searchSubTask(int page, int size, String taskId, String query) {
+    public ResponseEntity<?> searchSubTask(
+            int page,
+            int size,
+            String taskId,
+            String query,
+            String sortingColumn,
+            String orderDirection
+    ) {
 
         var baseResponseDTO = new BaseResponseDTO<Page<SubTaskResponseDTO>>();
         baseResponseDTO.setTimestamp(new Date());
@@ -119,7 +156,27 @@ public class SubTaskServiceImpl implements SubTaskService{
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
             }
 
-            Pageable pageable = PageRequest.of(page, size, Sort.by("order").ascending());
+            if (!SUBTASK_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
             Page<SubTaskResponseDTO> subTasks = subTaskDb.searchSubTaskByQuery(taskId, query, pageable);
 
             baseResponseDTO.setStatus(200);

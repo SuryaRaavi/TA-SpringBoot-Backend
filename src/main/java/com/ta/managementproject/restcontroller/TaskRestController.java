@@ -1,6 +1,6 @@
 package com.ta.managementproject.restcontroller;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +10,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.service.task.TaskService;
 
@@ -31,18 +30,22 @@ public class TaskRestController{
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate startDate,
+            Instant startDate,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate endDate,
+            Instant endDate,
 
-            @RequestParam(required = false) String query
+            @RequestParam(required = false) String query,
+
+            @RequestParam(required = false, defaultValue = "order") String sortingColumn,
+
+            @RequestParam(required = false, defaultValue = "ascending") String orderDirection
     ){
         if (query != null && !query.isEmpty()) {
-            return taskService.searchTask(page, size, stageId, query);
+            return taskService.searchTask(page, size, stageId, query, sortingColumn, orderDirection);
         }
-        return taskService.getAllTask(page, size, stageId, startDate, endDate);
+        return taskService.getAllTask(page, size, stageId, startDate, endDate, sortingColumn, orderDirection);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -87,7 +90,7 @@ public class TaskRestController{
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @PatchMapping("/{taskId}")
+    @DeleteMapping("/{taskId}")
     public ResponseEntity<?> deleteTask(
             @PathVariable String projectId,
             @PathVariable String stageId,

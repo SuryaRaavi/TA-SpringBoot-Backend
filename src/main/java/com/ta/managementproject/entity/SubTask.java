@@ -6,11 +6,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.time.LocalDate;
+import java.time.Instant;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -34,7 +35,7 @@ public class SubTask {
     private String description;
 
     @Column(name = "due_date", nullable = false)
-    private LocalDate dueDate;
+    private Instant dueDate;
 
     @Column(name = "status", nullable = false)
     private String status;
@@ -57,4 +58,8 @@ public class SubTask {
     @JoinColumn(name = "task", nullable = false)
     @JsonBackReference
     private Task task;
+
+    @Column(name = "created_at")
+    @CreationTimestamp
+    private Instant createdAt;
 }

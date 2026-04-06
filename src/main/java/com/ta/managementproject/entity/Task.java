@@ -11,8 +11,8 @@ import org.hibernate.annotations.*;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,7 +48,7 @@ public class Task {
     private String label;
 
     @Column(name = "due_date", nullable = false)
-    private LocalDate dueDate;
+    private Instant dueDate;
 
     @Column(name = "status", nullable = false)
     private String status;
@@ -66,8 +66,7 @@ public class Task {
 
     @Column(name = "created_at")
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @ManyToOne
     @JoinColumn(name = "stage", nullable = false)

@@ -3,7 +3,6 @@ package com.ta.managementproject.repository;
 import com.ta.managementproject.dto.response.ProjectResponseDTO;
 import com.ta.managementproject.dto.response.UsersInProjectResponseDTO;
 import com.ta.managementproject.entity.MemberInProject;
-import com.ta.managementproject.entity.ProjectMember;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import java.time.Instant;
 
 @Repository
 public interface MemberInProjectDb extends JpaRepository<MemberInProject, Long> {
@@ -28,7 +27,8 @@ public interface MemberInProjectDb extends JpaRepository<MemberInProject, Long> 
             SELECT new com.ta.managementproject.dto.response.ProjectResponseDTO(
                 mp.project.projectId,
                 mp.project.projectName,
-                mp.project.status
+                mp.project.status,
+                mp.project.createdAt
             )
             FROM MemberInProject mp
             WHERE mp.projectMember.username = :username
@@ -40,7 +40,8 @@ public interface MemberInProjectDb extends JpaRepository<MemberInProject, Long> 
                 SELECT new com.ta.managementproject.dto.response.ProjectResponseDTO(
                     p.projectId,
                     p.projectName,
-                    p.status
+                    p.status,
+                    p.createdAt
                 )
                 FROM MemberInProject mp
                 JOIN mp.project p
@@ -52,8 +53,8 @@ public interface MemberInProjectDb extends JpaRepository<MemberInProject, Long> 
             """)
     Page<ProjectResponseDTO> findAllByProjectMemberAndStartEndProyek(
             @Param("username") String username,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             Pageable pageable
     );
 
@@ -62,7 +63,8 @@ public interface MemberInProjectDb extends JpaRepository<MemberInProject, Long> 
                 SELECT new com.ta.managementproject.dto.response.ProjectResponseDTO(
                     p.projectId,
                     p.projectName,
-                    p.status
+                    p.status,
+                    p.createdAt
                 )
                 FROM MemberInProject mp
                 JOIN mp.project p

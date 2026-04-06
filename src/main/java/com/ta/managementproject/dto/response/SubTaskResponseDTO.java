@@ -11,7 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.time.Instant;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -19,8 +19,10 @@ import java.time.LocalDate;
 public class SubTaskResponseDTO {
     private String subTaskId;
     private String subTaskName;
-    private LocalDate dueDate;
+    private Instant dueDate;
     private String status;
     private String label;
     private String projectMemberName;
+    private Instant createdAt;
+    private Integer order;
 }

@@ -2,7 +2,6 @@ package com.ta.managementproject.service.stage;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.ProgressResponseDTO;
@@ -23,7 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -95,7 +94,7 @@ public class StageServiceImpl implements StageService{
             Stage newStage = Stage.builder()
                     .stageName(requestDTO.getStageName())
                     .description(requestDTO.getDescription())
-                    .createdAt(LocalDateTime.now())
+                    .createdAt(Instant.now())
                     .order(stageDb.getTotalStageByProject(projectId))
                     .project(project)
                     .build();
@@ -153,7 +152,7 @@ public class StageServiceImpl implements StageService{
     }
 
     @Override
-    public ResponseEntity<?> getStageStatistics(String stageId) {
+    public ResponseEntity<BaseResponseDTO<ProgressResponseDTO>> getStageStatistics(String stageId) {
         var baseResponseDTO = new BaseResponseDTO<ProgressResponseDTO>();
 
         try{

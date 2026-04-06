@@ -1,18 +1,17 @@
 package com.ta.managementproject.service.task;
 
 import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import org.springframework.http.ResponseEntity;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
 public interface TaskService {
 
-    ResponseEntity<?> getAllTask(int page, int size, String stageId, LocalDate startDate, LocalDate endDate);
+    ResponseEntity<?> getAllTask(int page, int size, String stageId, Instant startDate, Instant endDate, String sortingColumn, String orderDirection);
 
-    ResponseEntity<?> searchTask(int page, int size, String stageId, String query);
+    ResponseEntity<?> searchTask(int page, int size, String stageId, String query, String sortingColumn, String orderDirection);
 
     ResponseEntity<?> addNewTask(String stageId, CreateUpdateTaskRequestDTO requestDTO);
 

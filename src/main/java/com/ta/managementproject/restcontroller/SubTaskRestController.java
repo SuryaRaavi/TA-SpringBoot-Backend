@@ -1,6 +1,6 @@
 package com.ta.managementproject.restcontroller;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +10,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.service.task.SubTaskService;
 
@@ -32,18 +31,20 @@ public class SubTaskRestController {
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate startDate,
+            Instant startDate,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate endDate,
+            Instant endDate,
 
-            @RequestParam(required = false) String query
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false, defaultValue = "order") String sortingColumn,
+            @RequestParam(required = false, defaultValue = "ascending") String orderDirection
     ){
         if (query != null && !query.isEmpty()) {
-            return subTaskService.searchSubTask(page, size, taskId, query);
+            return subTaskService.searchSubTask(page, size, taskId, query, sortingColumn, orderDirection);
         }
-        return subTaskService.getAllSubTask(page, size, taskId, startDate, endDate);
+        return subTaskService.getAllSubTask(page, size, taskId, startDate, endDate, sortingColumn, orderDirection);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -92,7 +93,7 @@ public class SubTaskRestController {
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @PatchMapping("/{subTaskId}")
+    @DeleteMapping("/{subTaskId}")
     public ResponseEntity<?> deleteSubTask(
             @PathVariable String projectId,
             @PathVariable String stageId,

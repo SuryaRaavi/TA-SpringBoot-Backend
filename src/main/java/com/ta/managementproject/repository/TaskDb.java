@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import java.time.Instant;
 
 @Repository
 public interface TaskDb extends JpaRepository<Task, String> {
@@ -51,7 +51,9 @@ public interface TaskDb extends JpaRepository<Task, String> {
               t.dueDate,
               t.status,
               t.projectMember.fullName,
-              t.label
+              t.label,
+              t.createdAt,
+              t.order
             )
             FROM Task t
                 WHERE t.stage.stageId = :stageId
@@ -66,7 +68,9 @@ public interface TaskDb extends JpaRepository<Task, String> {
               t.dueDate,
               t.status,
               t.projectMember.fullName,
-              t.label
+              t.label,
+              t.createdAt,
+              t.order
             )
             FROM Task t
                 WHERE t.stage.stageId = :stageId
@@ -74,20 +78,22 @@ public interface TaskDb extends JpaRepository<Task, String> {
             """)
     Page<TaskResponseDTO> findTaskByStageIdAndDueDate(
             @Param("stageId") String stageId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             Pageable pageable
     );
 
     @Query(value = """
             SELECT new com.ta.managementproject.dto.response.TaskResponseDTO(
-              t.taskId,            
+              t.taskId,           
               t.taskName,
               t.priority,
               t.dueDate,
               t.status,
               t.projectMember.fullName,
-              t.label
+              t.label,
+              t.createdAt,
+              t.order
             )
             FROM Task t
                 WHERE t.stage.stageId = :stageId

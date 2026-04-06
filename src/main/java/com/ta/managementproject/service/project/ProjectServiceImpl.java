@@ -2,7 +2,6 @@ package com.ta.managementproject.service.project;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.response.*;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.enums.Role;
@@ -21,9 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -62,18 +59,45 @@ public class ProjectServiceImpl implements ProjectService {
     @Autowired
     private StageService stageService;
 
+    private static List<String> PROJECT_COLUMNS = List.of("projectName", "status", "createdAt");
+
+    private static List<String> USER_COLUMNS = List.of("username", "fullName");
+
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getAllProject(int page, int size, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getAllProject(
+            int page,
+            int size,
+            Instant startDate,
+            Instant endDate,
+            String sortingColumn,
+            String orderDirection
+    ) {
         var baseResponseDTO = new BaseResponseDTO<Page<ProjectResponseDTO>>();
         try{
             Role userRole = jwtUtils.getUserRoleFromJwtToken(request);
 
-            Pageable pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(userRole == Role.PROJECT_MEMBER ? "id" : "createdAt").descending()
-            );
+            if (!PROJECT_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
 
             String username = jwtUtils.getUserNameFromRequest(request);
 
@@ -144,7 +168,7 @@ public class ProjectServiceImpl implements ProjectService {
                             .status("NOT_STARTED")
                             .startDate(requestDTO.getStartDate())
                             .endDate(requestDTO.getEndDate())
-                            .createdAt(LocalDateTime.now(ZoneId.of("Asia/Jakarta")))
+                            .createdAt(Instant.now())
                             .build();
 
             newProyek = projectDb.save(newProyek);
@@ -177,8 +201,6 @@ public class ProjectServiceImpl implements ProjectService {
 
 
         try{
-            Role role = jwtUtils.getUserRoleFromJwtToken(request);
-
             if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())){
                 baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
                 baseResponseDTO.setTimestamp(new Date());
@@ -306,17 +328,39 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ResponseEntity<?> searchProject(int page, int size, String parameter) {
+    public ResponseEntity<?> searchProject(
+            int page,
+            int size,
+            String parameter,
+            String sortingColumn,
+            String orderDirection
+    ) {
         var baseResponseDTO = new BaseResponseDTO<Page<ProjectResponseDTO>>();
-
 
         try{
             Role userRole = jwtUtils.getUserRoleFromJwtToken(request);
-            Pageable pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(userRole == Role.PROJECT_MEMBER ? "id" : "createdAt").descending()
-            );
+
+            if (!PROJECT_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
 
             String username = jwtUtils.getUserNameFromRequest(request);
 
@@ -360,12 +404,12 @@ public class ProjectServiceImpl implements ProjectService {
 
             if (
                     project.getJoinCode() == null ||
-                            project.getJoinCodeExpiredAt().isBefore(LocalDateTime.now())
+                            project.getJoinCodeExpiredAt().isBefore(Instant.now())
             ) {
                 project.setJoinCode(
                         UUID.randomUUID().toString().substring(0, 8).toUpperCase()
                 );
-                project.setJoinCodeExpiredAt(LocalDateTime.now().plusDays(1));
+                project.setJoinCodeExpiredAt(Instant.now().plusSeconds(86400));
                 projectDb.save(project);
             }
 
@@ -401,7 +445,7 @@ public class ProjectServiceImpl implements ProjectService {
                 return new ResponseEntity<>(baseResponseDTO, HttpStatus.NOT_FOUND);
             }
 
-            if (project.getJoinCodeExpiredAt().isBefore(LocalDateTime.now())){
+            if (project.getJoinCodeExpiredAt().isBefore(Instant.now())){
                 baseResponseDTO.setStatus(HttpStatus.GONE.value());
                 baseResponseDTO.setMessage("Join code sudah expired!");
                 baseResponseDTO.setTimestamp(new Date());
@@ -413,6 +457,7 @@ public class ProjectServiceImpl implements ProjectService {
                                     .builder()
                                     .projectMember(pmb)
                                     .project(project)
+                                    .createdAt(project.getCreatedAt())
                                     .build();
 
             memberInProjectDb.save(memberInProject);
@@ -421,6 +466,7 @@ public class ProjectServiceImpl implements ProjectService {
                     .builder()
                     .project(project)
                     .user(pmb)
+                    .createdAt(project.getCreatedAt())
                     .build();
 
             userInProjectDb.save(userProyek);
@@ -440,15 +486,38 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ResponseEntity<?> getUsersInProject(String projectId, int page, int size, Integer role) {
+    public ResponseEntity<?> getUsersInProject(
+            String projectId,
+            int page,
+            int size,
+            Integer role,
+            String sortingColumn,
+            String orderDirection
+            ) {
         var baseResponseDTO = new BaseResponseDTO<Page<UsersInProjectResponseDTO>>();
 
         try{
-            Pageable pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by("id").descending()
-            );
+            if (!USER_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
 
             String username = jwtUtils.getUserNameFromRequest(request);
             Project project = projectDb.findByProjectId(projectId);
@@ -486,15 +555,38 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ResponseEntity<?> searchUserInProject(String projectId, String searchQuery, int page, int size) {
+    public ResponseEntity<?> searchUserInProject(
+            String projectId,
+            String searchQuery,
+            int page,
+            int size,
+            String sortingColumn,
+            String orderDirection
+    ) {
         var baseResponseDTO = new BaseResponseDTO<Page<UsersInProjectResponseDTO>>();
 
         try{
-            Pageable pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by("id").descending()
-            );
+            if (!USER_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
 
             Project project = projectDb.findByProjectId(projectId);
             String username = jwtUtils.getUserNameFromRequest(request);

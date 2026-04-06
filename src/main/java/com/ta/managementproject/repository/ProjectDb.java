@@ -10,33 +10,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import java.time.Instant;
 
 @Repository
 public interface ProjectDb extends JpaRepository<Project, String> {
     @Query(value = "SELECT COUNT(p) FROM PROYEK p", nativeQuery = true)
     Long getTotalProject();
-//
-//    @Query("""
-//            SELECT new com.project.safetypatrol.dto.response.AllProyekResponseDTO(
-//                p.kodeProyek,
-//                p.penyelenggara,
-//                p.namaProyek,
-//                p.lokasi
-//            )
-//            FROM Proyek p
-//            WHERE p.isDeleted = false
-//            """
-//    )
-//    Page<ProjectResponseDTO> findAllProyek(
-//            Pageable pageable
-//    );
 
     @Query("""
             SELECT new com.ta.managementproject.dto.response.ProjectResponseDTO(
                 p.projectId,
                 p.projectName,
-                p.status
+                p.status,
+                p.createdAt
             )
             FROM Project p
             WHERE p.projectManager.username = :username
@@ -51,7 +37,8 @@ public interface ProjectDb extends JpaRepository<Project, String> {
                  SELECT new com.ta.managementproject.dto.response.ProjectResponseDTO(
                     p.projectId,
                     p.projectName,
-                    p.status
+                    p.status,
+                    p.createdAt
                  )
                  FROM Project p
                  WHERE p.projectManager.username = :username
@@ -60,28 +47,11 @@ public interface ProjectDb extends JpaRepository<Project, String> {
             """)
     Page<ProjectResponseDTO> findAllByProjectManagerAndStartEndDate(
             @Param("username") String username,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             Pageable pageable
     );
 
-//    @Query("""
-//                 SELECT new com.project.safetypatrol.dto.response.AllProyekResponseDTO(
-//                     p.kodeProyek,
-//                     p.penyelenggara,
-//                     p.namaProyek,
-//                     p.lokasi
-//                 )
-//                 FROM Proyek p
-//                 WHERE p.tanggalMulai >= :tanggalMulai
-//                   AND p.tanggalSelesai <= :tanggalSelesai
-//                   AND p.isDeleted = false
-//            """)
-//    Page<ProjectResponseDTO> findAllByStartEndDate(
-//            @Param("tanggalMulai") LocalDate tanggalMulai,
-//            @Param("tanggalSelesai") LocalDate tanggalSelesai,
-//            Pageable pageable
-//    );
 
     Project findByProjectId(String projectId);
 
@@ -89,7 +59,8 @@ public interface ProjectDb extends JpaRepository<Project, String> {
              SELECT new com.ta.managementproject.dto.response.ProjectResponseDTO(
                 p.projectId,
                 p.projectName,
-                p.status
+                p.status,
+                p.createdAt
              )
              FROM Project p
              WHERE p.projectManager.username = :username
@@ -101,21 +72,7 @@ public interface ProjectDb extends JpaRepository<Project, String> {
             @Param("parameter") String parameter,
             Pageable pageable
     );
-//
-//    @Query("""
-//             SELECT new com.project.safetypatrol.dto.response.AllProyekResponseDTO(
-//                 p.kodeProyek,
-//                 p.penyelenggara,
-//                 p.namaProyek,
-//                 p.lokasi
-//             )
-//             FROM Proyek p
-//             WHERE (LOWER(p.namaProyek) LIKE LOWER(CONCAT('%', :parameter, '%'))
-//               OR LOWER(p.kodeProyek) LIKE LOWER(CONCAT('%', :parameter, '%')))
-//               AND p.isDeleted = false
-//    """)
-//    Page<ProjectResponseDTO> findProyekByNamaOrKodeProyek(@Param("parameter") String parameter, Pageable pageable);
-//
+
     @Query("""
             SELECT new com.ta.managementproject.dto.response.UsersInProjectResponseDTO(
                    p.projectManager.username,

@@ -1,6 +1,6 @@
 package com.ta.managementproject.service.task;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.TaskDetailResponseDTO;
@@ -64,6 +63,8 @@ public class TaskServiceImpl implements TaskService {
     @Autowired
     private MemberInProjectDb memberInProjectDb;
 
+    private static List<String> TASK_COLUMNS = List.of("taskName", "createdAt", "order", "priority", "dueDate");
+
     
     private String getUsernameFromToken() {
 
@@ -96,7 +97,15 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public ResponseEntity<?> getAllTask(int page, int size, String stageId, LocalDate startDate, LocalDate endDate) {
+    public ResponseEntity<?> getAllTask(
+            int page,
+            int size,
+            String stageId,
+            Instant startDate,
+            Instant endDate,
+            String sortingColumn,
+            String orderDirection
+    ) {
 
         var baseResponseDTO = new BaseResponseDTO<Page<TaskResponseDTO>>();
         baseResponseDTO.setTimestamp(new Date());
@@ -108,7 +117,28 @@ public class TaskServiceImpl implements TaskService {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
             }
 
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            if (!TASK_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
+
             Page<TaskResponseDTO> tasks;
 
             if (startDate != null && endDate != null) {
@@ -129,7 +159,14 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public ResponseEntity<?> searchTask(int page, int size, String stageId, String query) {
+    public ResponseEntity<?> searchTask(
+            int page,
+            int size,
+            String stageId,
+            String query,
+            String sortingColumn,
+            String orderDirection
+    ) {
 
         var baseResponseDTO = new BaseResponseDTO<Page<TaskResponseDTO>>();
         baseResponseDTO.setTimestamp(new Date());
@@ -141,7 +178,28 @@ public class TaskServiceImpl implements TaskService {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(baseResponseDTO);
             }
 
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            if (!TASK_COLUMNS.contains(sortingColumn)){
+                baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+                baseResponseDTO.setTimestamp(new Date());
+                baseResponseDTO.setMessage("Sorting column is not valid!");
+                return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+            }
+
+            Pageable pageable;
+            if (orderDirection.equals("ascending")) {
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).ascending()
+                );
+            }else{
+                pageable = PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortingColumn).descending()
+                );
+            }
+
             Page<TaskResponseDTO> tasks = taskDb.searchTaskByQuery(stageId, query, pageable);
 
             baseResponseDTO.setStatus(200);
@@ -188,7 +246,7 @@ public class TaskServiceImpl implements TaskService {
 
             baseResponseDTO.setStatus(201);
             baseResponseDTO.setMessage("Task created successfully");
-            baseResponseDTO.setData(new CrudResponseDTO(newTask.getTaskId(), java.time.LocalDateTime.now().toString()));
+            baseResponseDTO.setData(new CrudResponseDTO(newTask.getTaskId(), Instant.now().toString()));
             return ResponseEntity.ok(baseResponseDTO);
         }catch(Exception e){
             baseResponseDTO.setStatus(500);
@@ -230,7 +288,7 @@ public class TaskServiceImpl implements TaskService {
 
             baseResponseDTO.setStatus(200);
             baseResponseDTO.setMessage("Task updated successfully");
-            baseResponseDTO.setData(new CrudResponseDTO(taskId, java.time.LocalDateTime.now().toString()));
+            baseResponseDTO.setData(new CrudResponseDTO(taskId, Instant.now().toString()));
             return ResponseEntity.ok(baseResponseDTO);
         }catch(Exception e){
             baseResponseDTO.setStatus(500);

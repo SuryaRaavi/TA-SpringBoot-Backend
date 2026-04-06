@@ -1,18 +1,16 @@
 package com.ta.managementproject.service.task;
 
 import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
-import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import org.springframework.http.ResponseEntity;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
 public interface SubTaskService {
-    ResponseEntity<?> getAllSubTask(int page, int size, String taskId, LocalDate startDate, LocalDate endDate);
+    ResponseEntity<?> getAllSubTask(int page, int size, String taskId, Instant startDate, Instant endDate, String sortingColumn, String orderDirection);
 
-    ResponseEntity<?> searchSubTask(int page, int size, String taskId, String query);
+    ResponseEntity<?> searchSubTask(int page, int size, String taskId, String query, String sortingColumn, String orderDirection);
 
     ResponseEntity<?> addNewSubTask(String taskId, CreateUpdateSubTaskRequestDTO requestDTO);
 
