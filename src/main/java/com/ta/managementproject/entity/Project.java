@@ -71,8 +71,4 @@ public class Project {
 
     @Column(name = "jc_expired_at")
     private Instant joinCodeExpiredAt;
-
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    List<UserInProject> userInProjectList = new ArrayList<>();
 }

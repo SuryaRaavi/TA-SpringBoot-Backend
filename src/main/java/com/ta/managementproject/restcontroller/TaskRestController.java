@@ -84,9 +84,9 @@ public class TaskRestController{
     public ResponseEntity<?> reorderTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
-            @RequestBody List<ReorderRequestDTO> requestDTOs
+            @RequestBody ReorderRequestDTO requestDTO
     ){
-        return taskService.reorderTask(stageId, requestDTOs);
+        return taskService.reorderTask(stageId, requestDTO);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -97,5 +97,16 @@ public class TaskRestController{
             @PathVariable String taskId
     ){
         return taskService.deleteTaskById(stageId, taskId);
+    }
+
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
+    @PatchMapping("/update-status")
+    public ResponseEntity<?> updateTaskStatus(
+            @PathVariable String projectId,
+            @PathVariable String stageId,
+            @PathVariable String taskId,
+            @RequestBody CreateUpdateTaskRequestDTO requestDTO
+    ){
+        return taskService.updateTaskStatus(taskId, requestDTO);
     }
 }

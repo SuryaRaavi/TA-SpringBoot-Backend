@@ -3,6 +3,7 @@ package com.ta.managementproject.restcontroller;
 import java.time.Instant;
 import java.util.List;
 
+import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -87,9 +88,9 @@ public class SubTaskRestController {
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @RequestBody List<ReorderRequestDTO> requestDTOs
+            @RequestBody ReorderRequestDTO requestDTO
     ){
-        return subTaskService.reorderSubTask(taskId, requestDTOs);
+        return subTaskService.reorderSubTask(taskId, requestDTO);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -101,5 +102,17 @@ public class SubTaskRestController {
             @PathVariable String subTaskId
     ){
         return subTaskService.deleteSubTaskById(taskId, subTaskId);
+    }
+
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
+    @PatchMapping("/update-status")
+    public ResponseEntity<?> updateSubTaskStatus(
+            @PathVariable String projectId,
+            @PathVariable String stageId,
+            @PathVariable String taskId,
+            @PathVariable String subTaskId,
+            @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
+    ){
+        return subTaskService.updateSubTaskStatus(subTaskId, requestDTO);
     }
 }

@@ -17,11 +17,5 @@ public interface ProjectService {
 
     ResponseEntity<?> joinProject(String joinCode);
 
-    ResponseEntity<?> getUsersInProject(String projectId, int page, int size, Integer role, String sortingColumn, String orderDirection);
-
-    ResponseEntity<?> searchUserInProject(String projectId, String searchQuery, int page, int size, String sortingColumn, String orderDirection);
-
-    ResponseEntity<?> deleteProjectMemberFromProject(String projectId, String username);
-
     ResponseEntity<?> getProjectStatistics(String projectId);
 }

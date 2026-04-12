@@ -74,38 +74,13 @@ public class ProjectRestController {
         return projectService.generateJoinCode(projectId);
     }
 
-    @PreAuthorize("hasRole('HSE')")
+    @PreAuthorize("hasRole('PROJECT_MEMBER')")
     @PostMapping("/join")
     public ResponseEntity<?> joinProject(@RequestParam String joinCode){
         return projectService.joinProject(joinCode);
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @GetMapping("/{projectId}/users")
-    public ResponseEntity<?> getUsersInProject(
-            @PathVariable("projectId") String projectId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "4") int size,
-            @RequestParam(required = false) Integer role,
-            @RequestParam(required = false) String searchQuery,
-            @RequestParam(required = false, defaultValue = "createdAt") String sortingColumn,
-            @RequestParam(required = false, defaultValue = "descending") String orderDirection
-    ){
-        if (searchQuery != null){
-            return projectService.searchUserInProject(projectId, searchQuery, page, size, sortingColumn, orderDirection);
-        }
-        return projectService.getUsersInProject(projectId, page, size, role, sortingColumn, orderDirection);
-    }
-
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @DeleteMapping("/{projectId}/users/{username}")
-    public ResponseEntity<?> deleteProjectMemberFromProject(
-            @PathVariable("projectId") String projectId,
-            @PathVariable String username
-    ){
-        return projectService.deleteProjectMemberFromProject(projectId, username);
-    }
-
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
     @GetMapping("/{projectId}/statistics")
     public ResponseEntity<?> getStatistics(@PathVariable String projectId){
         return projectService.getProjectStatistics(projectId);

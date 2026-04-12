@@ -36,8 +36,8 @@ public class StageRestController {
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
     @PatchMapping("/reorder")
-    public ResponseEntity<?> reorderStage(@PathVariable String projectId, @RequestBody List<ReorderRequestDTO> requestDTOs){
-        return stageService.reorderStage(projectId, requestDTOs);
+    public ResponseEntity<?> reorderStage(@PathVariable String projectId, @RequestBody ReorderRequestDTO requestDTO){
+        return stageService.reorderStage(projectId, requestDTO);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")

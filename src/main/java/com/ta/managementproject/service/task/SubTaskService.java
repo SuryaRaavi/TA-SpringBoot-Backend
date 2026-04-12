@@ -20,5 +20,7 @@ public interface SubTaskService {
 
     ResponseEntity<?> deleteSubTaskById(String taskId, String subTaskId);
 
-    ResponseEntity<?> reorderSubTask(String taskId, List<ReorderRequestDTO> requestDTOList);
+    ResponseEntity<?> reorderSubTask(String taskId, ReorderRequestDTO requestDTO);
+
+    ResponseEntity<?> updateSubTaskStatus(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO);
 }

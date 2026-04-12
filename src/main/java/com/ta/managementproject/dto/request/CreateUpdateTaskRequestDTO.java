@@ -29,7 +29,5 @@ public class CreateUpdateTaskRequestDTO {
 
     private ProjectMember projectMember;
 
-    private boolean hasSubTask;
-
     private Stage stage;
 }

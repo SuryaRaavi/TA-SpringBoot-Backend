@@ -61,9 +61,6 @@ public class Task {
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted;
 
-    @Column(name = "has_sub_task", nullable = false)
-    private boolean hasSubTask;
-
     @Column(name = "created_at")
     @CreationTimestamp
     private Instant createdAt;

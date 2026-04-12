@@ -23,7 +23,6 @@ import org.springframework.http.ResponseEntity;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import static org.mockito.Mockito.*;

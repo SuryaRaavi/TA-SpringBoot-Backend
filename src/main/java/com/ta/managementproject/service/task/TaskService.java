@@ -21,5 +21,7 @@ public interface TaskService {
 
     ResponseEntity<?> deleteTaskById(String stageId, String taskId);
 
-    ResponseEntity<?> reorderTask(String stageId, List<ReorderRequestDTO> requestDTOList);
+    ResponseEntity<?> reorderTask(String stageId, ReorderRequestDTO requestDTO);
+
+    ResponseEntity<?> updateTaskStatus(String taskId, CreateUpdateTaskRequestDTO requestDTO);
 }

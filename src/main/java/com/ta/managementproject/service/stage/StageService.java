@@ -13,7 +13,7 @@ public interface StageService {
     ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO);
     ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO);
     ResponseEntity<BaseResponseDTO<ProgressResponseDTO>> getStageStatistics(String stageId);
-    ResponseEntity<?> reorderStage(String projectId, List<ReorderRequestDTO> requestDTOS);
+    ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO);
 
     ResponseEntity<?> deleteStageById(String projectId, String stageId);
 }

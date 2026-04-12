@@ -55,8 +55,4 @@ public class User {
     @JoinColumn(name = "role", nullable = false)
     @JsonBackReference
     private Role role;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    List<UserInProject> userInProjectList = new ArrayList<>();
 }
