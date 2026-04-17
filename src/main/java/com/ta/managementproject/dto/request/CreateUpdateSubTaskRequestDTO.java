@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -19,7 +20,7 @@ import java.time.Instant;
 public class CreateUpdateSubTaskRequestDTO {
     private String subTaskName;
     private String description;
-    private Instant dueDate;
+    private LocalDate dueDate;
     private String status;
     private String label;
     private Integer order;

@@ -6,17 +6,17 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.*;
 
 import java.time.Instant;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "sub_task")
+@Table(name = "sub_task",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"task_id", "sub_task_order"})
+        })
 @Entity
 @SQLDelete(sql = "UPDATE sub_task SET is_deleted = true WHERE sub_task_id = ?")
 @SQLRestriction("is_deleted IS false")
@@ -43,7 +43,7 @@ public class SubTask {
     @Column(name = "label")
     private String label;
 
-    @Column(name = "sub_task_order")
+    @Column(name = "sub_task_order", unique = true)
     private Integer order;
 
     @Column(name = "is_deleted", nullable = false)
@@ -62,4 +62,8 @@ public class SubTask {
     @Column(name = "created_at")
     @CreationTimestamp
     private Instant createdAt;
+
+    @Column(name = "updated_at")
+    @UpdateTimestamp
+    private Instant updatedAt;
 }

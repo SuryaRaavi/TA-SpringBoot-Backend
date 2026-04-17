@@ -1,7 +1,6 @@
 package com.ta.managementproject.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,8 +12,6 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 
 @Data
@@ -24,7 +21,7 @@ import java.util.List;
 @Table(name = "app_user")
 @SQLRestriction("is_deleted IS false")
 @Inheritance(strategy = InheritanceType.JOINED)
-@SQLDelete(sql = "UPDATE user SET is_deleted = true WHERE username = ?")
+@SQLDelete(sql = "UPDATE app_user SET is_deleted = true WHERE username = ?")
 @SuperBuilder
 public class User {
     @Id

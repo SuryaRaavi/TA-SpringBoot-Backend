@@ -28,5 +28,7 @@ public class TaskResponseDTO {
 
     private Instant createdAt;
 
+    private Instant updatedAt;
+
     private Integer order;
 }

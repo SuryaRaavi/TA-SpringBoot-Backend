@@ -1,8 +1,11 @@
 package com.ta.managementproject.service.task;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import com.ta.managementproject.exception.BadRequestException;
+import com.ta.managementproject.repository.SubTaskDbWithDsl;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
 import com.ta.managementproject.service.user.UserService;
@@ -41,6 +44,8 @@ public class SubTaskServiceImpl implements SubTaskService{
     private final AuthService authService;
     private final UtilService utilService;
 
+    private final SubTaskDbWithDsl subTaskDbWithDsl;
+
     public SubTaskServiceImpl(
             SubTaskDb subTaskDb,
             TaskDb taskDb,
@@ -49,7 +54,8 @@ public class SubTaskServiceImpl implements SubTaskService{
             HttpServletRequest request,
             UserService userService,
             AuthService authService,
-            UtilService utilService
+            UtilService utilService,
+            SubTaskDbWithDsl subTaskDbWithDsl
     ) {
         this.subTaskDb = subTaskDb;
         this.taskDb = taskDb;
@@ -59,9 +65,8 @@ public class SubTaskServiceImpl implements SubTaskService{
         this.userService = userService;
         this.authService = authService;
         this.utilService = utilService;
+        this.subTaskDbWithDsl = subTaskDbWithDsl;
     }
-
-    private static List<String> SUBTASK_COLUMNS = List.of("subTaskName", "createdAt", "order", "dueDate");
 
     private String getUsernameFromRequest() {
         return jwtUtils.getUserNameFromRequest(request);
@@ -69,78 +74,26 @@ public class SubTaskServiceImpl implements SubTaskService{
 
     @Override
     public ResponseEntity<?> getAllSubTask(
-            int page,
-            int size,
             String taskId,
-            Instant startDate,
-            Instant endDate,
-            String sortingColumn,
-            String orderDirection
+            LocalDate dueDate,
+            LocalDate createdAt,
+            LocalDate updatedAt,
+            Integer order,
+            String keyword,
+            Pageable pageable
     ) {
         Task task = authService.validateTask(taskId);
         authService.validateManagerAndMemberAccess(task.getStage().getProject(), getUsernameFromRequest());
 
-        if (!SUBTASK_COLUMNS.contains(sortingColumn)){
-            throw new BadRequestException("Sorting column is not valid!");
-        }
-
-        Pageable pageable;
-        if (orderDirection.equals("ascending")) {
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).ascending()
-            );
-        }else{
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).descending()
-            );
-        }
-
-        Page<SubTaskResponseDTO> subTasks;
-
-        if (startDate != null && endDate != null) {
-            subTasks = subTaskDb.findSubTaskByTaskIdAndDueDate(taskId, startDate, endDate, pageable);
-        } else {
-            subTasks = subTaskDb.findSubTaskByTaskId(taskId, pageable);
-        }
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", subTasks);
-    }
-
-    @Override
-    public ResponseEntity<?> searchSubTask(
-            int page,
-            int size,
-            String taskId,
-            String query,
-            String sortingColumn,
-            String orderDirection
-    ) {
-        Task task = authService.validateTask(taskId);
-        authService.validateManagerAndMemberAccess(task.getStage().getProject(), getUsernameFromRequest());
-
-        if (!SUBTASK_COLUMNS.contains(sortingColumn)){
-            throw new BadRequestException("Sorting column is not valid!");
-        }
-
-        Pageable pageable;
-        if (orderDirection.equals("ascending")) {
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).ascending()
-            );
-        }else{
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).descending()
-            );
-        }
-        Page<SubTaskResponseDTO> subTasks = subTaskDb.searchSubTaskByQuery(taskId, query, pageable);
+        Page<SubTaskResponseDTO> subTasks = subTaskDbWithDsl.findAll(
+                taskId,
+                dueDate,
+                createdAt,
+                updatedAt,
+                order,
+                keyword,
+                pageable
+        );
 
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", subTasks);
     }
@@ -155,7 +108,7 @@ public class SubTaskServiceImpl implements SubTaskService{
         SubTask newSubTask = SubTask.builder()
                 .subTaskName(requestDTO.getSubTaskName())
                 .description(requestDTO.getDescription())
-                .dueDate(requestDTO.getDueDate())
+                .dueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                 .status("TODO")
                 .label(requestDTO.getLabel())
                 .projectMember(requestDTO.getProjectMember())
@@ -176,7 +129,7 @@ public class SubTaskServiceImpl implements SubTaskService{
 
         subTask.setSubTaskName(requestDTO.getSubTaskName() != null ? requestDTO.getSubTaskName() : subTask.getSubTaskName());
         subTask.setDescription(requestDTO.getDescription() != null ? requestDTO.getDescription() : subTask.getDescription());
-        subTask.setDueDate(requestDTO.getDueDate() != null ? requestDTO.getDueDate() : subTask.getDueDate());
+        subTask.setDueDate(requestDTO.getDueDate() != null ? requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant() : subTask.getDueDate());
         subTask.setStatus(requestDTO.getStatus() != null ? requestDTO.getStatus() : subTask.getStatus());
         subTask.setLabel(requestDTO.getLabel() != null ? requestDTO.getLabel() : subTask.getLabel());
         subTask.setProjectMember(requestDTO.getProjectMember() != null ? requestDTO.getProjectMember() : subTask.getProjectMember());
@@ -203,11 +156,14 @@ public class SubTaskServiceImpl implements SubTaskService{
     }
 
     @Override
+    @Transactional
     public ResponseEntity<?> deleteSubTaskById(String taskId, String subTaskId) {
         SubTask subTask = authService.validateSubTask(subTaskId);
         authService.validateManagerAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
+        Integer order = subTask.getOrder();
 
         subTaskDb.delete(subTask);
+        subTaskDb.updateSubTaskOrderAfterDelete(taskId, order);
         return utilService.buildResponse(HttpStatus.CREATED, "Sub-task deleted successfully", new CrudResponseDTO(subTaskId, "DELETED"));
     }
 

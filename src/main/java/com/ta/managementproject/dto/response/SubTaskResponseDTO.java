@@ -24,5 +24,6 @@ public class SubTaskResponseDTO {
     private String label;
     private String projectMemberName;
     private Instant createdAt;
+    private Instant updatedAt;
     private Integer order;
 }

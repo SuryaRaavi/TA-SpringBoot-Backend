@@ -1,6 +1,5 @@
 package com.ta.managementproject.service.user;
 
-import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.RegisterRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.entity.ProjectManager;
@@ -18,14 +17,12 @@ import com.ta.managementproject.security.util.JwtUtils;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.Date;
 
 @Service
 @Transactional

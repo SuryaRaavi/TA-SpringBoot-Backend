@@ -19,7 +19,10 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "stage")
+@Table(name = "stage",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"project_id", "stage_order"})
+        })
 @Entity
 @SQLDelete(sql = "UPDATE stage SET is_deleted = true WHERE stage_id = ?")
 @SQLRestriction("is_deleted IS false")

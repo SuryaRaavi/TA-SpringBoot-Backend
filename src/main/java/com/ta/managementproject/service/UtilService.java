@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import java.awt.print.Pageable;
 import java.util.Date;
 
 @Component
@@ -19,5 +20,9 @@ public class UtilService {
         res.setData(data);
 
         return new ResponseEntity<>(res, status);
+    }
+
+    public Pageable createPagination(String sortingColumn, String orderDirection){
+        return null;
     }
 }

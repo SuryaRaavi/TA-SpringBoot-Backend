@@ -11,8 +11,6 @@ import com.ta.managementproject.entity.Stage;
 import com.ta.managementproject.entity.Task;
 import com.ta.managementproject.entity.User;
 import com.ta.managementproject.enums.Role;
-import com.ta.managementproject.exception.ForbiddenException;
-import com.ta.managementproject.exception.NotFoundException;
 import com.ta.managementproject.repository.*;
 import com.ta.managementproject.security.util.JwtUtils;
 import com.ta.managementproject.service.UtilService;
@@ -20,15 +18,12 @@ import com.ta.managementproject.service.auth.AuthService;
 import com.ta.managementproject.service.task.TaskService;
 import com.ta.managementproject.service.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 @Service
@@ -46,6 +41,7 @@ public class StageServiceImpl implements StageService{
     private final TaskService taskService;
     private final UtilService utilService;
     private final AuthService authService;
+    private final StageDbWithDsl stageDbWithDsl;
 
     public StageServiceImpl(
             StageDb stageDb,
@@ -58,7 +54,8 @@ public class StageServiceImpl implements StageService{
             SubTaskDb subTaskDb,
             TaskService taskService,
             UtilService utilService,
-            AuthService authService
+            AuthService authService,
+            StageDbWithDsl stageDbWithDsl
     ) {
         this.stageDb = stageDb;
         this.request = request;
@@ -71,6 +68,7 @@ public class StageServiceImpl implements StageService{
         this.taskService = taskService;
         this.utilService = utilService;
         this.authService = authService;
+        this.stageDbWithDsl = stageDbWithDsl;
     }
 
     @Override
@@ -83,13 +81,10 @@ public class StageServiceImpl implements StageService{
 
         String username = jwtUtils.getUserNameFromRequest(request);
 
-        List<StageResponseDTO> responses;
-
-        if (Role.valueOf(user.getRole().getName()) == Role.PROJECT_MANAGER){
-            responses = stageDb.findAllByProjectIdAndUsernamePM(username, projectId);
-        }else{
-            responses = stageDb.findAllByProjectIdAndUsernamePMB(username, projectId);
-        }
+        List<StageResponseDTO> responses =
+                Role.valueOf(user.getRole().getName()) == Role.PROJECT_MANAGER ?
+                stageDbWithDsl.findAll(username, null, projectId) :
+                stageDbWithDsl.findAll(null, username, projectId);
 
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responses);
     }
@@ -106,7 +101,7 @@ public class StageServiceImpl implements StageService{
                 .stageName(requestDTO.getStageName())
                 .description(requestDTO.getDescription())
                 .createdAt(Instant.now())
-                .order(stageDb.getTotalStageByProject(projectId))
+                .order((int) (long) stageDbWithDsl.totalStageByProject(projectId) + 1)
                 .project(project)
                 .build();
 
@@ -207,6 +202,7 @@ public class StageServiceImpl implements StageService{
             authService.validateManagerAccess(project, user.getUsername());
 
             Stage stage = stageDb.findByStageId(stageId);
+            Integer order = stage.getOrder();
 
             if (!stage.getTaskList().isEmpty()){
                 for (Task task: stage.getTaskList()){
@@ -214,6 +210,7 @@ public class StageServiceImpl implements StageService{
                 }
             }
             stageDb.delete(stageDb.findByStageId(stageId));
+            stageDb.updateStageOrderAfterDelete(projectId, order);
 
             return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
     }

@@ -3,12 +3,13 @@ package com.ta.managementproject;
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.LoginRequestDTO;
 import com.ta.managementproject.dto.response.LoginResponseDTO;
-import com.ta.managementproject.entity.Role;
-import com.ta.managementproject.entity.User;
-import com.ta.managementproject.repository.RoleDb;
-import com.ta.managementproject.repository.UserDb;
+import com.ta.managementproject.entity.*;
+import com.ta.managementproject.exception.ForbiddenException;
+import com.ta.managementproject.exception.NotFoundException;
+import com.ta.managementproject.repository.*;
 import com.ta.managementproject.security.util.AESUtil;
 import com.ta.managementproject.security.util.JwtUtils;
+import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 
+import java.util.ArrayList;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,232 +31,323 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class AuthServiceTest {
-    @InjectMocks
-    private AuthServiceImpl authService;
+    @Mock
+    private AESUtil aesUtil;
 
     @Mock
     private UserDb userDb;
-    @Mock private AESUtil aesUtil;
-    @Mock private JwtUtils jwtUtils;
-    @Mock private RoleDb roleDb;
 
-    // ─── Shared fixtures ──────────────────────────────────────────────────────────
+    @Mock
+    private JwtUtils jwtUtils;
 
-    private Role role;
-    private User user;
-    private LoginRequestDTO loginRequest;
+    @Mock
+    private RoleDb roleDb;
+
+    @Mock
+    private UtilService utilService;
+
+    @Mock
+    private ProjectDb projectDb;
+
+    @Mock
+    private StageDb stageDb;
+
+    @Mock
+    private TaskDb taskDb;
+
+    @Mock
+    private SubTaskDb subTaskDb;
+
+    @InjectMocks
+    private AuthServiceImpl authService;
+
+    // ── Shared test fixtures ──────────────────────────────────────────────────
+
+    private User mockUser;
+    private Role mockRole;
+    private Project mockProject;
+    private Stage mockStage;
+    private Task mockTask;
+    private SubTask mockSubTask;
+    private MemberInProject mockMember;
 
     @BeforeEach
     void setUp() {
-        role = new Role();
-        role.setName("PROJECT_MANAGER");
+        mockRole = new Role();
+        mockRole.setName("MANAGER");
 
-        user = new User();
-        user.setUsername("pm_user");
-        user.setPassword("encrypted_password");
-        user.setRole(role);
+        mockUser = new User();
+        mockUser.setUsername("testuser");
+        mockUser.setPassword("encryptedPassword");
+        mockUser.setRole(mockRole);
 
-        loginRequest = new LoginRequestDTO();
-        loginRequest.setUsername("pm_user");
-        loginRequest.setPassword("raw_password");
+        // Manager user
+        User managerUser = new ProjectManager();
+        managerUser.setUsername("manager");
+
+        mockProject = new Project();
+        mockProject.setProjectId("PROJECT-001");
+        mockProject.setProjectManager((ProjectManager) managerUser);
+        mockProject.setMemberInProjectList(new ArrayList<>());
+
+        mockStage = new Stage();
+        mockStage.setStageId("STAGE-001");
+
+        mockTask = new Task();
+        mockTask.setTaskId("TASK-001");
+
+        mockSubTask = new SubTask();
+        mockSubTask.setSubTaskId("SUBTASK-001");
+
+        // Member setup
+        User memberUser = new ProjectMember();
+        memberUser.setUsername("member");
+
+        mockMember = new MemberInProject();
+        mockMember.setProjectMember((ProjectMember) memberUser);
     }
 
-    // ─── Helper ───────────────────────────────────────────────────────────────────
-
-    @SuppressWarnings("unchecked")
-    private BaseResponseDTO<LoginResponseDTO> extractBody(ResponseEntity<?> response) {
-        return (BaseResponseDTO<LoginResponseDTO>) response.getBody();
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════════
-    // doLogin — Login berhasil
-    // ══════════════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
+    // doLogin
+    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void doLogin_withValidCredentials_returnsOk() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenReturn("encrypted_password");
-        when(jwtUtils.generateJwtToken("pm_user", "PROJECT_MANAGER")).thenReturn("jwt_token");
-        when(jwtUtils.getExpirationFromToken("jwt_token")).thenReturn(new Date());
+    void doLogin_Success() throws Exception {
+        // Arrange
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setUsername("testuser");
+        request.setPassword("plainPassword");
 
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
+        when(userDb.findByUsername("testuser")).thenReturn(mockUser);
+        when(aesUtil.encrypt("plainPassword")).thenReturn("encryptedPassword");
+        when(jwtUtils.generateJwtToken("testuser", "MANAGER")).thenReturn("jwt-token-123");
+        when(jwtUtils.getExpirationFromToken("jwt-token-123")).thenReturn(new Date());
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        BaseResponseDTO<LoginResponseDTO> body = extractBody(response);
-        assertEquals(HttpStatus.OK.value(), body.getStatus());
-        assertEquals("Login Successful", body.getMessage());
-        assertNotNull(body.getTimestamp());
-    }
+        ResponseEntity<BaseResponseDTO<Object>> expectedResponse = ResponseEntity.ok().build();
+        when(utilService.buildResponse(any(HttpStatus.class), anyString(), any())).thenReturn(expectedResponse);
 
-    @Test
-    void doLogin_withValidCredentials_responseDataIsPopulatedCorrectly() throws Exception {
-        Date expirationDate = new Date(System.currentTimeMillis() + 86400000);
+        // Act
+        ResponseEntity<?> result = authService.doLogin(request);
 
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenReturn("encrypted_password");
-        when(jwtUtils.generateJwtToken("pm_user", "PROJECT_MANAGER")).thenReturn("jwt_token");
-        when(jwtUtils.getExpirationFromToken("jwt_token")).thenReturn(expirationDate);
-
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
-
-        LoginResponseDTO data = extractBody(response).getData();
-        assertNotNull(data);
-        assertEquals("pm_user", data.getUsername());
-        assertEquals("jwt_token", data.getToken());
-        assertEquals("PROJECT_MANAGER", data.getRole().getRoleName());
-        assertEquals(expirationDate, data.getExpirationDate());
-    }
-
-    @Test
-    void doLogin_withValidCredentials_jwtIsGeneratedWithCorrectParams() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenReturn("encrypted_password");
-        when(jwtUtils.generateJwtToken("pm_user", "PROJECT_MANAGER")).thenReturn("jwt_token");
-        when(jwtUtils.getExpirationFromToken("jwt_token")).thenReturn(new Date());
-
-        authService.doLogin(loginRequest);
-
-        verify(jwtUtils).generateJwtToken("pm_user", "PROJECT_MANAGER");
-        verify(jwtUtils).getExpirationFromToken("jwt_token");
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════════
-    // doLogin — Username tidak ditemukan
-    // ══════════════════════════════════════════════════════════════════════════════
-
-    @Test
-    void doLogin_withUnknownUsername_returnsNotFound() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(null);
-
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
-
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        BaseResponseDTO<LoginResponseDTO> body = extractBody(response);
-        assertEquals(HttpStatus.NOT_FOUND.value(), body.getStatus());
-        assertEquals("Username not found!", body.getMessage());
-        assertNotNull(body.getTimestamp());
+        // Assert
+        assertNotNull(result);
+        verify(userDb).findByUsername("testuser");
+        verify(aesUtil).encrypt("plainPassword");
+        verify(jwtUtils).generateJwtToken("testuser", "MANAGER");
+        verify(utilService).buildResponse(eq(HttpStatus.OK), eq("Login Successful"), any(LoginResponseDTO.class));
     }
 
     @Test
-    void doLogin_withUnknownUsername_doesNotCallEncryptOrJwt() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(null);
+    void doLogin_UsernameNotFound_ThrowsNotFoundException() throws Exception {
+        // Arrange
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setUsername("unknown");
+        request.setPassword("password");
 
-        authService.doLogin(loginRequest);
+        when(userDb.findByUsername("unknown")).thenReturn(null);
 
-        verify(aesUtil, never()).encrypt(any());
-        verify(jwtUtils, never()).generateJwtToken(any(), any());
-    }
+        // Act & Assert
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> authService.doLogin(request));
 
-    // ══════════════════════════════════════════════════════════════════════════════
-    // doLogin — Password salah
-    // ══════════════════════════════════════════════════════════════════════════════
-
-    @Test
-    void doLogin_withWrongPassword_returnsUnauthorized() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenReturn("wrong_encrypted");
-        // "wrong_encrypted" != "encrypted_password" → unauthorized
-
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
-
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        BaseResponseDTO<LoginResponseDTO> body = extractBody(response);
-        assertEquals(HttpStatus.UNAUTHORIZED.value(), body.getStatus());
-        assertEquals("Username atau password yang dimasukkan salah!", body.getMessage());
-        assertNotNull(body.getTimestamp());
+        assertEquals("USERNAME_NOT_FOUND", exception.getMessage());
+        verify(userDb).findByUsername("unknown");
+        verifyNoInteractions(aesUtil, jwtUtils, utilService);
     }
 
     @Test
-    void doLogin_withWrongPassword_doesNotGenerateJwt() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenReturn("wrong_encrypted");
+    void doLogin_WrongPassword_ThrowsForbiddenException() throws Exception {
+        // Arrange
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setUsername("testuser");
+        request.setPassword("wrongPassword");
 
-        authService.doLogin(loginRequest);
+        when(userDb.findByUsername("testuser")).thenReturn(mockUser);
+        when(aesUtil.encrypt("wrongPassword")).thenReturn("wrongEncrypted");
 
-        verify(jwtUtils, never()).generateJwtToken(any(), any());
+        // Act & Assert
+        ForbiddenException exception = assertThrows(ForbiddenException.class,
+                () -> authService.doLogin(request));
+
+        assertEquals("Username atau password yang dimasukkan salah!", exception.getMessage());
+        verify(aesUtil).encrypt("wrongPassword");
+        verifyNoInteractions(jwtUtils, utilService);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // validateProject
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void validateProject_Success() {
+        // Arrange
+        when(projectDb.findByProjectId("PROJECT-001")).thenReturn(mockProject);
+
+        // Act
+        Project result = authService.validateProject("PROJECT-001");
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("PROJECT-001", result.getProjectId());
+        verify(projectDb).findByProjectId("PROJECT-001");
     }
 
     @Test
-    void doLogin_withWrongPassword_responseDataIsNull() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenReturn("wrong_encrypted");
+    void validateProject_NotFound_ThrowsNotFoundException() {
+        // Arrange
+        when(projectDb.findByProjectId("INVALID-ID")).thenReturn(null);
 
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
+        // Act & Assert
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> authService.validateProject("INVALID-ID"));
 
-        assertNull(extractBody(response).getData());
+        assertEquals("PROJECT_NOT_FOUND", exception.getMessage());
+        verify(projectDb).findByProjectId("INVALID-ID");
     }
 
-    // ══════════════════════════════════════════════════════════════════════════════
-    // doLogin — Role PROJECT_MEMBER
-    // ══════════════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
+    // validateManagerAccess
+    // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void doLogin_asProjectMember_returnsCorrectRole() throws Exception {
-        Role memberRole = new Role();
-        memberRole.setName("PROJECT_MEMBER");
-
-        User memberUser = new User();
-        memberUser.setUsername("member_user");
-        memberUser.setPassword("encrypted_pass");
-        memberUser.setRole(memberRole);
-
-        LoginRequestDTO memberRequest = new LoginRequestDTO();
-        memberRequest.setUsername("member_user");
-        memberRequest.setPassword("raw_pass");
-
-        when(userDb.findByUsername("member_user")).thenReturn(memberUser);
-        when(aesUtil.encrypt("raw_pass")).thenReturn("encrypted_pass");
-        when(jwtUtils.generateJwtToken("member_user", "PROJECT_MEMBER")).thenReturn("member_jwt");
-        when(jwtUtils.getExpirationFromToken("member_jwt")).thenReturn(new Date());
-
-        ResponseEntity<?> response = authService.doLogin(memberRequest);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        LoginResponseDTO data = extractBody(response).getData();
-        assertEquals("member_user", data.getUsername());
-        assertEquals("PROJECT_MEMBER", data.getRole().getRoleName());
-        assertEquals("member_jwt", data.getToken());
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════════
-    // doLogin — Exception handling
-    // ══════════════════════════════════════════════════════════════════════════════
-
-    @Test
-    void doLogin_whenUserDbThrowsException_returnsInternalServerError() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenThrow(new RuntimeException("DB connection failed"));
-
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
-
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        BaseResponseDTO<LoginResponseDTO> body = extractBody(response);
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), body.getStatus());
-        assertEquals("DB connection failed", body.getMessage());
-        assertNotNull(body.getTimestamp());
+    void validateManagerAccess_Success_WhenUsernameMatchesManager() {
+        // Act & Assert — should NOT throw
+        assertDoesNotThrow(() ->
+                authService.validateManagerAccess(mockProject, "manager"));
     }
 
     @Test
-    void doLogin_whenAesUtilThrowsException_returnsInternalServerError() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenThrow(new RuntimeException("Encryption error"));
+    void validateManagerAccess_Forbidden_WhenUsernameDoesNotMatch() {
+        // Act & Assert
+        ForbiddenException exception = assertThrows(ForbiddenException.class,
+                () -> authService.validateManagerAccess(mockProject, "otherUser"));
 
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
+        assertEquals("FORBIDDEN", exception.getMessage());
+    }
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals("Encryption error", extractBody(response).getMessage());
-        verify(jwtUtils, never()).generateJwtToken(any(), any());
+    // ══════════════════════════════════════════════════════════════════════════
+    // validateManagerAndMemberAccess
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void validateManagerAndMemberAccess_Success_WhenManager() {
+        // Act & Assert — manager username passes
+        assertDoesNotThrow(() ->
+                authService.validateManagerAndMemberAccess(mockProject, "manager"));
     }
 
     @Test
-    void doLogin_whenJwtUtilsThrowsException_returnsInternalServerError() throws Exception {
-        when(userDb.findByUsername("pm_user")).thenReturn(user);
-        when(aesUtil.encrypt("raw_password")).thenReturn("encrypted_password");
-        when(jwtUtils.generateJwtToken("pm_user", "PROJECT_MANAGER"))
-                .thenThrow(new RuntimeException("JWT generation failed"));
+    void validateManagerAndMemberAccess_Success_WhenMember() {
+        // Arrange — add a member to the project
+        mockProject.getMemberInProjectList().add(mockMember);
 
-        ResponseEntity<?> response = authService.doLogin(loginRequest);
+        // Act & Assert — member username passes
+        assertDoesNotThrow(() ->
+                authService.validateManagerAndMemberAccess(mockProject, "member"));
+    }
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals("JWT generation failed", extractBody(response).getMessage());
+    @Test
+    void validateManagerAndMemberAccess_Forbidden_WhenNeitherManagerNorMember() {
+        // Arrange — no members in project
+        mockProject.setMemberInProjectList(new ArrayList<>());
+
+        // Act & Assert
+        ForbiddenException exception = assertThrows(ForbiddenException.class,
+                () -> authService.validateManagerAndMemberAccess(mockProject, "stranger"));
+
+        assertEquals("Access Not Allowed!", exception.getMessage());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // validateStage
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void validateStage_Success() {
+        // Arrange
+        when(stageDb.findByStageId("STAGE-001")).thenReturn(mockStage);
+
+        // Act
+        Stage result = authService.validateStage("STAGE-001");
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("STAGE-001", result.getStageId());
+        verify(stageDb).findByStageId("STAGE-001");
+    }
+
+    @Test
+    void validateStage_NotFound_ThrowsNotFoundException() {
+        // Arrange
+        when(stageDb.findByStageId("INVALID-STAGE")).thenReturn(null);
+
+        // Act & Assert
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> authService.validateStage("INVALID-STAGE"));
+
+        assertEquals("STAGE_NOT_FOUND", exception.getMessage());
+        verify(stageDb).findByStageId("INVALID-STAGE");
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // validateTask
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void validateTask_Success() {
+        // Arrange
+        when(taskDb.findByTaskId("TASK-001")).thenReturn(mockTask);
+
+        // Act
+        Task result = authService.validateTask("TASK-001");
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("TASK-001", result.getTaskId());
+        verify(taskDb).findByTaskId("TASK-001");
+    }
+
+    @Test
+    void validateTask_NotFound_ThrowsNotFoundException() {
+        // Arrange
+        when(taskDb.findByTaskId("INVALID-TASK")).thenReturn(null);
+
+        // Act & Assert
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> authService.validateTask("INVALID-TASK"));
+
+        assertEquals("TASK_NOT_FOUND", exception.getMessage());
+        verify(taskDb).findByTaskId("INVALID-TASK");
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // validateSubTask
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void validateSubTask_Success() {
+        // Arrange
+        when(subTaskDb.findSubTaskBySubTaskId("SUBTASK-001")).thenReturn(mockSubTask);
+
+        // Act
+        SubTask result = authService.validateSubTask("SUBTASK-001");
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("SUBTASK-001", result.getSubTaskId());
+        verify(subTaskDb).findSubTaskBySubTaskId("SUBTASK-001");
+    }
+
+    @Test
+    void validateSubTask_NotFound_ThrowsNotFoundException() {
+        // Arrange
+        when(subTaskDb.findSubTaskBySubTaskId("INVALID-SUBTASK")).thenReturn(null);
+
+        // Act & Assert
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> authService.validateSubTask("INVALID-SUBTASK"));
+
+        assertEquals("SUB_TASK_NOT_FOUND", exception.getMessage());
+        verify(subTaskDb).findSubTaskBySubTaskId("INVALID-SUBTASK");
     }
 }

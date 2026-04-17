@@ -19,69 +19,6 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
     @Query("SELECT st FROM SubTask st WHERE st.subTaskId = :subTaskId")
     SubTask findSubTaskBySubTaskId (@Param("subTaskId") String subTaskId);
 
-    @Query(value = """
-                    SELECT new com.ta.managementproject.dto.response.SubTaskResponseDTO(
-                      st.subTaskId,
-                      st.subTaskName,
-                      st.dueDate,
-                      st.status,
-                      st.label,
-                      st.projectMember.fullName,
-                      st.createdAt,
-                      st.order
-                    )
-                    FROM SubTask st
-                        WHERE st.task.taskId = :taskId
-            """)
-    Page<SubTaskResponseDTO> findSubTaskByTaskId(@Param("taskId") String taskId, Pageable pageable);
-
-    @Query(value = """
-                    SELECT new com.ta.managementproject.dto.response.SubTaskResponseDTO(
-                      st.subTaskId,
-                      st.subTaskName,
-                      st.dueDate,
-                      st.status,
-                      st.label,
-                      st.projectMember.fullName,
-                      st.createdAt,
-                      st.order
-                    )
-                    FROM SubTask st
-                        WHERE st.task.taskId = :taskId
-                        AND st.dueDate BETWEEN :startDate AND :endDate
-            """)
-    Page<SubTaskResponseDTO> findSubTaskByTaskIdAndDueDate(
-            @Param("taskId") String taskId,
-            @Param("startDate") Instant startDate,
-            @Param("endDate") Instant endDate,
-            Pageable pageable
-    );
-
-    @Query(value = """
-            SELECT new com.ta.managementproject.dto.response.SubTaskResponseDTO(
-                      st.subTaskId,
-                      st.subTaskName,
-                      st.dueDate,
-                      st.status,
-                      st.label,
-                      st.projectMember.fullName,
-                      st.createdAt,
-                      st.order
-            )
-            FROM SubTask st
-                WHERE st.task.taskId = :taskId
-                AND (
-                       LOWER(st.subTaskId) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(st.subTaskName) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(st.projectMember.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-                )
-    """)
-    Page<SubTaskResponseDTO> searchSubTaskByQuery(
-            @Param("taskId") String taskId,
-            @Param("query") String query,
-            Pageable pageable
-    );
-
     @Query("SELECT COUNT(st) FROM SubTask st WHERE st.task.taskId = :taskId")
     Integer getTotalSubTask(@Param("taskId") String taskId);
 
@@ -141,4 +78,14 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
             @Param("firstOrder") Integer firstOrder,
             @Param("secondOrder") Integer secondOrder
     );
+
+    @Modifying
+    @Query("""
+            UPDATE 
+             SubTask st 
+              SET st.order = st.order - 1 
+             WHERE st.task.taskId = :taskId
+             AND st.order > :order
+            """)
+    int updateSubTaskOrderAfterDelete(@Param("taskId") String taskId, @Param("order") Integer order);
 }

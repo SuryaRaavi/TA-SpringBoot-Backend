@@ -7,17 +7,21 @@ import com.ta.managementproject.entity.ProjectManager;
 import com.ta.managementproject.entity.ProjectMember;
 import com.ta.managementproject.entity.Role;
 import com.ta.managementproject.entity.User;
+import com.ta.managementproject.exception.BadRequestException;
+import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.repository.ProjectManagerDb;
 import com.ta.managementproject.repository.ProjectMemberDb;
 import com.ta.managementproject.repository.RoleDb;
 import com.ta.managementproject.repository.UserDb;
 import com.ta.managementproject.security.util.AESUtil;
+import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.user.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +43,9 @@ public class UserServiceTest {
     @Mock private AESUtil aesUtil;
     @Mock private ProjectManagerDb projectManagerDb;
     @Mock private ProjectMemberDb projectMemberDb;
+
+    @Spy
+    private UtilService utilService = new UtilService(); // pakai implementasi asli
 
     // ─── Shared fixtures ──────────────────────────────────────────────────────────
 
@@ -154,20 +161,17 @@ public class UserServiceTest {
     // ══════════════════════════════════════════════════════════════════════════════
 
     @Test
-    void addNewUser_usernameAlreadyExists_returnsConflict() throws Exception {
+    void addNewUser_usernameAlreadyExists_throwsConflictException() throws Exception {
         RegisterRequestDTO dto = buildRequest("existing_user", "Existing", "pass", 1);
 
         User existingUser = new User();
         existingUser.setUsername("existing_user");
         when(userDb.findByUsername("existing_user")).thenReturn(existingUser);
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> userService.addNewUser(dto));
 
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-        assertNotNull(body);
-        assertEquals(HttpStatus.CONFLICT.value(), body.getStatus());
-        assertEquals("Username already exist!", body.getMessage());
+        assertEquals("Username already exist!", exception.getMessage());
 
         // Tidak boleh menyimpan apapun
         verify(projectManagerDb, never()).save(any());
@@ -180,16 +184,14 @@ public class UserServiceTest {
     // ══════════════════════════════════════════════════════════════════════════════
 
     @Test
-    void addNewUser_withRole0_returnsBadRequest() {
+    void addNewUser_withRole0_returnsBadRequest() throws Exception {
         RegisterRequestDTO dto = buildRequest("new_user", "New User", "pass", 0);
         when(userDb.findByUsername("new_user")).thenReturn(null);
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> userService.addNewUser(dto));
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-        assertEquals(HttpStatus.BAD_REQUEST.value(), body.getStatus());
-        assertEquals("Selected role is not valid!", body.getMessage());
+        assertEquals("Selected role is not valid!", exception.getMessage());
 
         verify(projectManagerDb, never()).save(any());
         verify(projectMemberDb, never()).save(any());
@@ -200,21 +202,21 @@ public class UserServiceTest {
         RegisterRequestDTO dto = buildRequest("new_user", "New User", "pass", 3);
         when(userDb.findByUsername("new_user")).thenReturn(null);
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> userService.addNewUser(dto));
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("Selected role is not valid!", ((BaseResponseDTO<?>) response.getBody()).getMessage());
+        assertEquals("Selected role is not valid!", exception.getMessage());
     }
 
     @Test
-    void addNewUser_withNegativeRole_returnsBadRequest() {
+    void addNewUser_withNegativeRole_returnsBadRequest() throws Exception {
         RegisterRequestDTO dto = buildRequest("new_user", "New User", "pass", -1);
         when(userDb.findByUsername("new_user")).thenReturn(null);
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> userService.addNewUser(dto));
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("Selected role is not valid!", ((BaseResponseDTO<?>) response.getBody()).getMessage());
+        assertEquals("Selected role is not valid!", exception.getMessage());
     }
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -256,20 +258,14 @@ public class UserServiceTest {
     // ══════════════════════════════════════════════════════════════════════════════
 
     @Test
-    void addNewUser_whenUserDbThrowsException_returnsInternalServerError() {
+    void addNewUser_whenUserDbThrowsException_returnsInternalServerError() throws Exception {
         RegisterRequestDTO dto = buildRequest("pm_user", "PM User", "secret", 1);
         when(userDb.findByUsername("pm_user")).thenThrow(new RuntimeException("DB connection failed"));
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
+        Exception exception = assertThrows(Exception.class,
+                () -> userService.addNewUser(dto));
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), body.getStatus());
-        assertEquals("DB connection failed", body.getMessage());
-
-        CrudResponseDTO data = (CrudResponseDTO) body.getData();
-        assertEquals("FAILED", data.getMessage());
-        assertEquals("DB connection failed", data.getMessageDetail());
+        assertEquals("DB connection failed", exception.getMessage());
     }
 
     @Test
@@ -280,11 +276,11 @@ public class UserServiceTest {
         when(roleDb.findByName("PROJECT_MANAGER")).thenReturn(pmRole);
         when(aesUtil.encrypt("secret")).thenThrow(new RuntimeException("Encryption failed"));
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-        assertEquals("Encryption failed", body.getMessage());
+        Exception exception = assertThrows(Exception.class,
+                () -> userService.addNewUser(dto));
+
+        assertEquals("Encryption failed", exception.getMessage());
         verify(projectManagerDb, never()).save(any());
     }
 
@@ -297,10 +293,10 @@ public class UserServiceTest {
         when(aesUtil.encrypt("secret")).thenReturn("encrypted");
         doThrow(new RuntimeException("Save failed")).when(projectManagerDb).save(any());
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
+        Exception exception = assertThrows(Exception.class,
+                () -> userService.addNewUser(dto));
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals("Save failed", ((BaseResponseDTO<?>) response.getBody()).getMessage());
+        assertEquals("Save failed", exception.getMessage());
     }
 
     @Test
@@ -312,9 +308,9 @@ public class UserServiceTest {
         when(aesUtil.encrypt("secret")).thenReturn("encrypted");
         doThrow(new RuntimeException("Member save failed")).when(projectMemberDb).save(any());
 
-        ResponseEntity<?> response = userService.addNewUser(dto);
+        Exception exception = assertThrows(Exception.class,
+                () -> userService.addNewUser(dto));
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals("Member save failed", ((BaseResponseDTO<?>) response.getBody()).getMessage());
+        assertEquals("Member save failed", exception.getMessage());
     }
 }

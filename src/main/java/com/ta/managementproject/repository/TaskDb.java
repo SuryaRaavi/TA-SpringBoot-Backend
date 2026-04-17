@@ -21,99 +21,6 @@ public interface TaskDb extends JpaRepository<Task, String> {
     @Query(value = "SELECT COUNT(t) FROM Task t WHERE t.stage.stageId = :stageId")
     Integer getTotalTask(@Param("stageId") String stageId);
 
-    @Query(value = """
-                    SELECT COUNT(t)
-                      FROM Task t
-                     WHERE
-                     t.stage.stageId = :stageId
-                     AND t.status = 'FINISHED'                           
-    """)
-    Integer getTotalFinishedTask(@Param("stageId") String stageId);
-
-    @Query(value = """
-                    SELECT COUNT(t)
-                      FROM Task t
-                     WHERE
-                     t.stage.stageId = :stageId
-                     AND t.status = 'TODO'                            
-    """)
-    Integer getTotalToDoTask(@Param("stageId") String stageId);
-
-    @Query(value = """
-                    SELECT COUNT(t)
-                      FROM Task t
-                     WHERE
-                     t.stage.stageId = :stageId
-                     AND t.status = 'IN_PROGRESS'                            
-    """)
-    Integer getTotalInProgressTask(@Param("stageId") String stageId);
-
-    @Query(value = """
-            SELECT new com.ta.managementproject.dto.response.TaskResponseDTO(
-              t.taskId,               
-              t.taskName,
-              t.priority,
-              t.dueDate,
-              t.status,
-              t.projectMember.fullName,
-              t.label,
-              t.createdAt,
-              t.order
-            )
-            FROM Task t
-                WHERE t.stage.stageId = :stageId
-    """)
-    Page<TaskResponseDTO> findTaskByStageId(@Param("stageId") String stageId, Pageable pageable);
-
-    @Query(value = """
-            SELECT new com.ta.managementproject.dto.response.TaskResponseDTO(
-              t.taskId,              
-              t.taskName,
-              t.priority,
-              t.dueDate,
-              t.status,
-              t.projectMember.fullName,
-              t.label,
-              t.createdAt,
-              t.order
-            )
-            FROM Task t
-                WHERE t.stage.stageId = :stageId
-                AND t.dueDate BETWEEN :startDate AND :endDate
-            """)
-    Page<TaskResponseDTO> findTaskByStageIdAndDueDate(
-            @Param("stageId") String stageId,
-            @Param("startDate") Instant startDate,
-            @Param("endDate") Instant endDate,
-            Pageable pageable
-    );
-
-    @Query(value = """
-            SELECT new com.ta.managementproject.dto.response.TaskResponseDTO(
-              t.taskId,           
-              t.taskName,
-              t.priority,
-              t.dueDate,
-              t.status,
-              t.projectMember.fullName,
-              t.label,
-              t.createdAt,
-              t.order
-            )
-            FROM Task t
-                WHERE t.stage.stageId = :stageId
-                AND (
-                       LOWER(t.taskId) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(t.taskName) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(t.projectMember.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
-                )
-    """)
-    Page<TaskResponseDTO> searchTaskByQuery(
-            @Param("stageId") String stageId,
-            @Param("query") String query,
-            Pageable pageable
-    );
-
     @Modifying
     @Query("""
             UPDATE 
@@ -139,8 +46,18 @@ public interface TaskDb extends JpaRepository<Task, String> {
              AND t.order < :secondOrder  
             """)
     int updateTaskOrderBelow(
-            @Param("taskId") String taskId,
+            @Param("stageId") String stageId,
             @Param("firstOrder") Integer firstOrder,
             @Param("secondOrder") Integer secondOrder
     );
+
+    @Modifying
+    @Query("""
+            UPDATE 
+             Task t 
+              SET t.order = t.order - 1 
+             WHERE t.stage.stageId = :stageId
+             AND t.order > :order
+            """)
+    int updateTaskOrderAfterDelete(@Param("stageId") String stageId, @Param("order") Integer order);
 }

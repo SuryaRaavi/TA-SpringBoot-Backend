@@ -1,33 +1,25 @@
 package com.ta.managementproject.service.task;
 
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 
-import com.ta.managementproject.enums.Role;
-import com.ta.managementproject.exception.BadRequestException;
 import com.ta.managementproject.repository.*;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
 import com.ta.managementproject.service.user.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.TaskDetailResponseDTO;
 import com.ta.managementproject.dto.response.TaskResponseDTO;
-import com.ta.managementproject.entity.Project;
 import com.ta.managementproject.entity.Stage;
 import com.ta.managementproject.entity.Task;
 import com.ta.managementproject.security.util.JwtUtils;
@@ -50,6 +42,7 @@ public class TaskServiceImpl implements TaskService {
     private final SubTaskDb subTaskDb;
     private final AuthService authService;
     private final UtilService utilService;
+    private final TaskDbWithDsl taskDbWithDsl;
 
     public TaskServiceImpl(
             ProjectManagerDb projectManagerDb,
@@ -63,7 +56,8 @@ public class TaskServiceImpl implements TaskService {
             UserService userService,
             SubTaskDb subTaskDb,
             AuthService authService,
-            UtilService utilService
+            UtilService utilService,
+            TaskDbWithDsl taskDbWithDsl
     ) {
         this.projectManagerDb = projectManagerDb;
         this.projectMemberDb = projectMemberDb;
@@ -77,9 +71,8 @@ public class TaskServiceImpl implements TaskService {
         this.subTaskDb = subTaskDb;
         this.authService = authService;
         this.utilService = utilService;
+        this.taskDbWithDsl = taskDbWithDsl;
     }
-    private static List<String> TASK_COLUMNS = List.of("taskName", "createdAt", "order", "priority", "dueDate");
-
     
     private String getUsernameFromToken() {
 
@@ -89,83 +82,34 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public ResponseEntity<?> getAllTask(
-            int page,
-            int size,
+            Pageable pageable,
             String stageId,
-            Instant startDate,
-            Instant endDate,
-            String sortingColumn,
-            String orderDirection
+            LocalDate dueDate,
+            LocalDate createdAt,
+            LocalDate updatedAt,
+            Integer priority,
+            Integer order,
+            String keyword
     ) {
         Stage stage = authService.validateStage(stageId);
         authService.validateManagerAndMemberAccess(stage.getProject(), getUsernameFromToken());
 
-        if (!TASK_COLUMNS.contains(sortingColumn)){
-            throw new BadRequestException("Sorting column is not valid!");
-        }
-
-        Pageable pageable;
-        if (orderDirection.equals("ascending")) {
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).ascending()
-            );
-        }else{
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).descending()
-            );
-        }
-
-        Page<TaskResponseDTO> tasks;
-
-        if (startDate != null && endDate != null) {
-            tasks = taskDb.findTaskByStageIdAndDueDate(stageId, startDate, endDate, pageable);
-        } else {
-            tasks = taskDb.findTaskByStageId(stageId, pageable);
-        }
+        Page<TaskResponseDTO> tasks = taskDbWithDsl.findAll(
+                stageId,
+                dueDate,
+                createdAt,
+                updatedAt,
+                priority,
+                order,
+                keyword,
+                pageable
+        );
 
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", tasks);
     }
 
     @Override
-    public ResponseEntity<?> searchTask(
-            int page,
-            int size,
-            String stageId,
-            String query,
-            String sortingColumn,
-            String orderDirection
-    ) {
-        Stage stage = authService.validateStage(stageId);
-        authService.validateManagerAndMemberAccess(stage.getProject(), getUsernameFromToken());
-
-        if (!TASK_COLUMNS.contains(sortingColumn)){
-            throw new BadRequestException("Sorting column is not valid!");
-        }
-
-        Pageable pageable;
-        if (orderDirection.equals("ascending")) {
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).ascending()
-            );
-        }else{
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).descending()
-            );
-        }
-        Page<TaskResponseDTO> tasks = taskDb.searchTaskByQuery(stageId, query, pageable);
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", tasks);
-    }
-
-    @Override
+    @Transactional
     public ResponseEntity<?> addNewTask(String stageId, CreateUpdateTaskRequestDTO requestDTO) {
             Stage stage = authService.validateStage(stageId);
             authService.validateManagerAccess(stage.getProject(), getUsernameFromToken());
@@ -176,7 +120,7 @@ public class TaskServiceImpl implements TaskService {
                     .taskName(requestDTO.getTaskName())
                     .description(requestDTO.getDescription())
                     .priority(requestDTO.getPriority())
-                    .dueDate(requestDTO.getDueDate())
+                    .dueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                     .status("TODO")
                     .projectMember(requestDTO.getProjectMember())
                     .stage(stage)
@@ -198,7 +142,7 @@ public class TaskServiceImpl implements TaskService {
         task.setTaskName(requestDTO.getTaskName());
         task.setDescription(requestDTO.getDescription());
         task.setPriority(requestDTO.getPriority());
-        task.setDueDate(requestDTO.getDueDate());
+        task.setDueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant());
         task.setStatus(requestDTO.getStatus());
         task.setProjectMember(requestDTO.getProjectMember());
 
@@ -234,11 +178,13 @@ public class TaskServiceImpl implements TaskService {
     public ResponseEntity<?> deleteTaskById(String stageId, String taskId) {
             Task task = authService.validateTask(taskId);
             authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromToken());
+            Integer order = task.getOrder();
 
             if (!task.getSubTaskList().isEmpty()){
                 subTaskDb.deleteAll(task.getSubTaskList());
             }
             taskDb.deleteById(taskId);
+            taskDb.updateTaskOrderAfterDelete(stageId, order);
 
             return utilService.buildResponse(HttpStatus.OK, "Tasks deleted successfully", null);
     }

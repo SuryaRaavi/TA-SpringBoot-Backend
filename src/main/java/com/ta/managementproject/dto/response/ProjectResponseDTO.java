@@ -14,4 +14,6 @@ public class ProjectResponseDTO {
     private String projectName;
     private String status;
     private Instant createdAt;
+
+    private Instant updatedAt;
 }

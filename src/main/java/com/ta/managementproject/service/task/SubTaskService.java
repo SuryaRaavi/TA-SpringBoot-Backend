@@ -2,15 +2,22 @@ package com.ta.managementproject.service.task;
 
 import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface SubTaskService {
-    ResponseEntity<?> getAllSubTask(int page, int size, String taskId, Instant startDate, Instant endDate, String sortingColumn, String orderDirection);
-
-    ResponseEntity<?> searchSubTask(int page, int size, String taskId, String query, String sortingColumn, String orderDirection);
+    ResponseEntity<?> getAllSubTask(String taskId,
+                                    LocalDate dueDate,
+                                    LocalDate createdAt,
+                                    LocalDate updatedAt,
+                                    Integer order,
+                                    String keyword,
+                                    Pageable pageable
+    );
 
     ResponseEntity<?> addNewSubTask(String taskId, CreateUpdateSubTaskRequestDTO requestDTO);
 

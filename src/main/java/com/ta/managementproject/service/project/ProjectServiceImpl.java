@@ -6,7 +6,6 @@ import com.ta.managementproject.dto.response.*;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.enums.Role;
 import com.ta.managementproject.exception.BadRequestException;
-import com.ta.managementproject.exception.ForbiddenException;
 import com.ta.managementproject.exception.NotFoundException;
 import com.ta.managementproject.exception.UnprocessableContentException;
 import com.ta.managementproject.repository.*;
@@ -16,18 +15,16 @@ import com.ta.managementproject.service.auth.AuthService;
 import com.ta.managementproject.service.stage.StageService;
 import com.ta.managementproject.service.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,6 +42,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final StageService stageService;
     private final UserService userService;
     private final UtilService utilService;
+    private final ProjectDbWithDsl projectDbWithDsl;
 
     public ProjectServiceImpl(
             ProjectDb projectDb,
@@ -57,7 +55,8 @@ public class ProjectServiceImpl implements ProjectService {
             UserDb userDb,
             StageService stageService,
             UserService userService,
-            UtilService utilService
+            UtilService utilService,
+            ProjectDbWithDsl projectDbWithDsl
     ) {
         this.projectDb = projectDb;
         this.request = request;
@@ -70,52 +69,19 @@ public class ProjectServiceImpl implements ProjectService {
         this.stageService = stageService;
         this.userService = userService;
         this.utilService = utilService;
+        this.projectDbWithDsl = projectDbWithDsl;
     }
-
-    private static List<String> PROJECT_COLUMNS = List.of("projectName", "status", "createdAt");
-
-    private static List<String> USER_COLUMNS = List.of("username", "fullName");
 
     @Override
     @Transactional(readOnly = true)
     public ResponseEntity<?> getAllProject(
-            int page,
-            int size,
-            Instant startDate,
-            Instant endDate,
-            String sortingColumn,
-            String orderDirection
+            Pageable pageable, LocalDate startDate, LocalDate endDate, String status, LocalDate createdAt, LocalDate updatedAt, String keyword
     ) {
         Role userRole = userService.getUserRoleByUsername(jwtUtils.getUserNameFromRequest(request));
-
-        if (!PROJECT_COLUMNS.contains(sortingColumn)){
-            throw new BadRequestException("Sorting column is not valid!");
-        }
-
-        Pageable pageable;
-        if (orderDirection.equals("ascending")) {
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).ascending()
-            );
-        }else{
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).descending()
-            );
-        }
 
         String username = jwtUtils.getUserNameFromRequest(request);
 
         Page<ProjectResponseDTO> projectList;
-
-        if ((startDate == null && endDate != null) ||
-                (startDate != null && endDate == null)
-        ){
-            throw new BadRequestException("Tanggal mulai dan tanggal selesai harus terisi!");
-        }
 
         if (startDate != null && endDate != null){
             if (endDate.isBefore(startDate)){
@@ -123,15 +89,9 @@ public class ProjectServiceImpl implements ProjectService {
             }
         }
 
-        if (userRole == Role.PROJECT_MANAGER){
-            projectList = startDate == null && endDate == null ?
-                    projectDb.findAllByProjectManager(username, pageable) :
-                    projectDb.findAllByProjectManagerAndStartEndDate(username, startDate, endDate, pageable);
-        }else {
-            projectList = startDate == null && endDate == null ?
-                    memberInProjectDb.findByProjectMember(username, pageable) :
-                    memberInProjectDb.findAllByProjectMemberAndStartEndProyek(username, startDate, endDate, pageable);
-        }
+        projectList = userRole == Role.PROJECT_MANAGER ?
+                projectDbWithDsl.findAll(username, null, startDate, endDate, status, createdAt, updatedAt, keyword, pageable) :
+                projectDbWithDsl.findAll(null, username, startDate, endDate, status, createdAt, updatedAt, keyword, pageable);
 
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", projectList);
     }
@@ -150,8 +110,8 @@ public class ProjectServiceImpl implements ProjectService {
                         .description(requestDTO.getDescription())
                         .projectManager(pm)
                         .status("NOT_STARTED")
-                        .startDate(requestDTO.getStartDate())
-                        .endDate(requestDTO.getEndDate())
+                        .startDate(requestDTO.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant())
+                        .endDate(requestDTO.getEndDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                         .createdAt(Instant.now())
                         .build();
 
@@ -175,8 +135,8 @@ public class ProjectServiceImpl implements ProjectService {
                     project.toBuilder()
                             .projectName(requestDTO.getProjectName() == null ? project.getProjectName() : requestDTO.getProjectName())
                             .description(requestDTO.getDescription() == null ? project.getDescription() : requestDTO.getDescription())
-                            .startDate(requestDTO.getStartDate() == null ? project.getStartDate() : requestDTO.getStartDate())
-                            .endDate(requestDTO.getEndDate() == null ? project.getEndDate() : requestDTO.getEndDate())
+                            .startDate(requestDTO.getStartDate() == null ? project.getStartDate() : requestDTO.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant())
+                            .endDate(requestDTO.getEndDate() == null ? project.getEndDate() : requestDTO.getEndDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                             .status(requestDTO.getStatus() == null ? project.getStatus() : requestDTO.getStatus())
                             .build()
             );
@@ -226,48 +186,6 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ResponseEntity<?> searchProject(
-            int page,
-            int size,
-            String parameter,
-            String sortingColumn,
-            String orderDirection
-    ) {
-        Role userRole = userService.getUserRoleByUsername(jwtUtils.getUserNameFromRequest(request));
-
-        if (!PROJECT_COLUMNS.contains(sortingColumn)){
-            throw new BadRequestException("Sorting column is not valid!");
-        }
-
-        Pageable pageable;
-        if (orderDirection.equals("ascending")) {
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).ascending()
-            );
-        }else{
-            pageable = PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(sortingColumn).descending()
-            );
-        }
-
-        String username = jwtUtils.getUserNameFromRequest(request);
-
-        Page<ProjectResponseDTO> projectList;
-
-        if (userRole == Role.PROJECT_MANAGER){
-            projectList = projectDb.findPMProjectByProjectNameOrProjectId(username, parameter, pageable);
-        }else {
-            projectList = memberInProjectDb.findPMBProjectByProjectNameAndProjectId(username, parameter, pageable);
-        }
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", projectList);
-    }
-
-    @Override
     public ResponseEntity<?> generateJoinCode(String projectId) {
         String username = jwtUtils.getUserNameFromRequest(request);
 
@@ -294,7 +212,7 @@ public class ProjectServiceImpl implements ProjectService {
         String username = jwtUtils.getUserNameFromRequest(request);
 
         ProjectMember pmb = projectMemberDb.findByUsername(username);
-        Project project = projectDb.findProjectByJoinCode(joinCode);
+        Project project = projectDb.findByJoinCode(joinCode);
 
         if (project == null){
             throw new NotFoundException("PROJECT_NOT_FOUND!");

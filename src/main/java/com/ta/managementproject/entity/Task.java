@@ -19,7 +19,10 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "task")
+@Table(name = "task",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"stage_id", "task_order"})
+})
 @Entity
 @SQLDelete(sql = "UPDATE task SET is_deleted = true WHERE task_id = ?")
 @SQLRestriction("is_deleted IS false")
@@ -64,6 +67,10 @@ public class Task {
     @Column(name = "created_at")
     @CreationTimestamp
     private Instant createdAt;
+
+    @Column(name = "updated_at")
+    @UpdateTimestamp
+    private Instant updatedAt;
 
     @ManyToOne
     @JoinColumn(name = "stage", nullable = false)

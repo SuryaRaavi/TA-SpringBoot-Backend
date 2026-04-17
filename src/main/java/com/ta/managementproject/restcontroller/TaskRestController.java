@@ -1,9 +1,10 @@
 package com.ta.managementproject.restcontroller;
 
-import java.time.Instant;
-import java.util.List;
+import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,28 +25,40 @@ public class TaskRestController{
     public ResponseEntity<?> getAllTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
-
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "4") int size,
+            @PageableDefault(size = 10, page = 0) Pageable pageable,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            Instant startDate,
+            LocalDate dueDate,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            Instant endDate,
+            LocalDate createdAt,
 
-            @RequestParam(required = false) String query,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate updatedAt,
 
-            @RequestParam(required = false, defaultValue = "order") String sortingColumn,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            Integer priority,
 
-            @RequestParam(required = false, defaultValue = "ascending") String orderDirection
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            Integer order,
+
+            @RequestParam(required = false) String keyword
     ){
-        if (query != null && !query.isEmpty()) {
-            return taskService.searchTask(page, size, stageId, query, sortingColumn, orderDirection);
-        }
-        return taskService.getAllTask(page, size, stageId, startDate, endDate, sortingColumn, orderDirection);
+        return taskService.getAllTask(
+                pageable,
+                stageId,
+                dueDate,
+                createdAt,
+                updatedAt,
+                priority,
+                order,
+                keyword
+        );
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")

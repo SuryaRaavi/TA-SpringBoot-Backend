@@ -18,41 +18,6 @@ import java.util.List;
 public interface StageDb extends JpaRepository<Stage, String> {
 
     Stage findByStageId(String stageId);
-    @Query("SELECT COUNT(s) FROM Stage s WHERE s.project.projectId = :projectId")
-    Integer getTotalStageByProject(@Param("projectId") String projectId);
-
-    @Query("""
-            SELECT new com.ta.managementproject.dto.response.StageResponseDTO(
-                s.stageId,
-                s.stageName,
-                s.order
-            )
-            FROM Stage s
-            WHERE s.project.projectManager.username = :username
-              AND s.project.projectId = :projectId
-            """
-    )
-    List<StageResponseDTO> findAllByProjectIdAndUsernamePM(
-            @Param("username") String username,
-            @Param("projectId") String projectId
-    );
-
-    @Query("""
-            SELECT new com.ta.managementproject.dto.response.StageResponseDTO(
-                s.stageId,
-                s.stageName,
-                s.order
-            )
-            FROM MemberInProject mp
-                JOIN Stage s
-                WHERE mp.projectMember.username = :username
-                  AND mp.project.projectId = :projectId
-                  AND s.project.projectId = mp.project.projectId
-    """)
-    List<StageResponseDTO> findAllByProjectIdAndUsernamePMB(
-            @Param("username") String username,
-            @Param("projectId") String projectId
-    );
 
     @Modifying
     @Query("""
@@ -83,4 +48,15 @@ public interface StageDb extends JpaRepository<Stage, String> {
             @Param("firstOrder") Integer firstOrder,
             @Param("secondOrder") Integer secondOrder
     );
+
+    @Modifying
+    @Query(
+            """
+            UPDATE 
+             Stage s
+              SET s.order = s.order - 1
+             WHERE s.project.projectId = :projectId
+             AND s.order > :order
+    """)
+    int updateStageOrderAfterDelete(@Param("projectId") String projectId, @Param("order") Integer order);
 }

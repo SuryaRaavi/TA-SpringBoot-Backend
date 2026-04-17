@@ -3,12 +3,14 @@ package com.ta.managementproject.restcontroller;
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
 import com.ta.managementproject.service.project.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -20,28 +22,28 @@ public class ProjectRestController {
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
     @GetMapping("")
     public ResponseEntity<?> getProjects(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "4") int size,
+            @PageableDefault(size = 10, page = 0) Pageable pageable,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            Instant startDate,
+            LocalDate endDate,
+
+            @RequestParam(required = false) String status,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            Instant endDate,
+            LocalDate createdAt,
 
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate updatedAt,
 
-            @RequestParam(required = false) String sortingColumn,
-
-            @RequestParam(required = false) String orderDirection
+            @RequestParam(required = false) String keyword
     ){
-        if (search == null){
-            return projectService.getAllProject(page, size, startDate, endDate, sortingColumn, orderDirection);
-        }else{
-            return projectService.searchProject(page, size, search, sortingColumn, orderDirection);
-        }
+        return projectService.getAllProject(pageable, startDate, endDate, status, createdAt, updatedAt, keyword);
     }
 
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")

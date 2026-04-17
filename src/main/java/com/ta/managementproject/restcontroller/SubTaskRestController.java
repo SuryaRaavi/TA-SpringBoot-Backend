@@ -1,10 +1,10 @@
 package com.ta.managementproject.restcontroller;
 
-import java.time.Instant;
-import java.util.List;
+import java.time.LocalDate;
 
-import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,26 +26,33 @@ public class SubTaskRestController {
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "4") int size,
+            @PageableDefault(size = 10, page = 0) Pageable pageable,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            Instant startDate,
+            LocalDate dueDate,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            Instant endDate,
+            LocalDate createdAt,
 
-            @RequestParam(required = false) String query,
-            @RequestParam(required = false, defaultValue = "order") String sortingColumn,
-            @RequestParam(required = false, defaultValue = "ascending") String orderDirection
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate updatedAt,
+
+            @RequestParam(required = false) Integer order,
+
+            @RequestParam(required = false) String keyword
     ){
-        if (query != null && !query.isEmpty()) {
-            return subTaskService.searchSubTask(page, size, taskId, query, sortingColumn, orderDirection);
-        }
-        return subTaskService.getAllSubTask(page, size, taskId, startDate, endDate, sortingColumn, orderDirection);
+        return subTaskService.getAllSubTask(
+                taskId,
+                dueDate,
+                createdAt,
+                updatedAt,
+                order,
+                keyword,
+                pageable
+        );
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")

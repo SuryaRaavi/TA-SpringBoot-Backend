@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
@@ -15,10 +16,10 @@ public class CreateUpdateProjectRequestDTO {
     private String description;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Instant startDate;
+    private LocalDate startDate;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Instant endDate;
+    private LocalDate endDate;
 
     private String status;
 }
