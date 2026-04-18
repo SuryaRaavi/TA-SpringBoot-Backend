@@ -140,17 +140,18 @@ public class StageServiceImpl implements StageService{
         ProgressResponseDTO responseDTO = new ProgressResponseDTO();
 
         // Jika task memiliki subtask, akumulasi task berdasarkan subtask
-        Integer totalFinishedTask = 0;
-        Integer totalTask = 0;
-        Integer totalTodoTask = 0;
-        Integer totalInProgressTask = 0;
+        Long totalFinishedTask = 0L;
+        Long totalTask = 0L;
+        Long totalTodoTask = 0L;
+        Long totalInProgressTask = 0L;
 
         for (Task t: stage.getTaskList()){
             if (t.getSubTaskList().isEmpty()){
-                totalInProgressTask += subTaskDb.getTotalInProgressSubTask(t.getTaskId());
-                totalTodoTask += subTaskDb.getTotalToDoSubTask(t.getTaskId());
-                totalFinishedTask += subTaskDb.getTotalFinishedSubTask(t.getTaskId());
-                totalTask += subTaskDb.getTotalSubTask(t.getTaskId());
+                ProgressResponseDTO progressResponseDTO = subTaskDb.getSubTaskSummary(t.getTaskId());
+                totalFinishedTask += progressResponseDTO.getFinishedTask();
+                totalTask += progressResponseDTO.getTotalTask();
+                totalTodoTask += progressResponseDTO.getTodoTask();
+                totalInProgressTask += progressResponseDTO.getInProgressTask();
             }else{
                 switch (t.getStatus()) {
                     case "TODO" -> totalTodoTask++;

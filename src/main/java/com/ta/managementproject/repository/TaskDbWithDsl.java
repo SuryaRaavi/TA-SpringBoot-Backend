@@ -134,6 +134,7 @@ public class TaskDbWithDsl {
             String keyword,
             Pageable pageable
     ){
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
         BooleanBuilder predicate = buildDynamicFilter
                 (stageId, dueDate, createdAt, updatedAt, priority, order, keyword);
 
@@ -153,7 +154,7 @@ public class TaskDbWithDsl {
                 ))
                 .from(task)
                 .where(predicate)
-                .orderBy(getOrderSpecifiers(pageable))
+                .orderBy(orders)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

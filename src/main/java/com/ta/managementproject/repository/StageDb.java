@@ -1,18 +1,12 @@
 package com.ta.managementproject.repository;
 
 
-import com.ta.managementproject.dto.response.ProjectResponseDTO;
-import com.ta.managementproject.dto.response.StageResponseDTO;
 import com.ta.managementproject.entity.Stage;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
 
 @Repository
 public interface StageDb extends JpaRepository<Stage, String> {

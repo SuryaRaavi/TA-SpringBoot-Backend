@@ -242,10 +242,10 @@ public class ProjectServiceImpl implements ProjectService {
 
             authService.validateManagerAndMemberAccess(project, user.getUsername());
 
-            Integer totalTask = 0;
-            Integer totalFinishedTask = 0;
-            Integer totalToDoTask = 0;
-            Integer totalInProgressTask = 0;
+            Long totalTask = 0L;
+            Long totalFinishedTask = 0L;
+            Long totalToDoTask = 0L;
+            Long totalInProgressTask = 0L;
 
             for (Stage stage: project.getStageList()){
                 ResponseEntity<?> response = stageService.getStageStatistics(stage.getStageId());

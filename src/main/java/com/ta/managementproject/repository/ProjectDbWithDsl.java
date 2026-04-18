@@ -135,6 +135,7 @@ public class ProjectDbWithDsl {
             String keyword,
             Pageable pageable
     ){
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
         BooleanBuilder predicate = buildDynamicFilter(pmUsername, memberUsername, startDate, endDate, status, createdAt, updatedAt, keyword);
 
         List<ProjectResponseDTO> results = queryFactory
@@ -143,11 +144,12 @@ public class ProjectDbWithDsl {
                         project.projectId,
                         project.projectName,
                         project.status,
-                        project.createdAt
+                        project.createdAt,
+                        project.updatedAt
                 ))
                 .from(project)
                 .where(predicate)
-                .orderBy(getOrderSpecifiers(pageable))
+                .orderBy(orders)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

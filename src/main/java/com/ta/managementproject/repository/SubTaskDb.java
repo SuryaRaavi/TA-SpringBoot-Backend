@@ -2,6 +2,7 @@ package com.ta.managementproject.repository;
 
 import java.time.Instant;
 
+import com.ta.managementproject.dto.response.ProgressResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,32 +23,21 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
     @Query("SELECT COUNT(st) FROM SubTask st WHERE st.task.taskId = :taskId")
     Integer getTotalSubTask(@Param("taskId") String taskId);
 
-    @Query(value = """
-                    SELECT COUNT(st)
-                      FROM SubTask st
-                     WHERE
-                     st.task.taskId = :taskId
-                     AND st.status = 'FINISHED'                           
+    @Query("""
+        SELECT new com.ta.managementproject.dto.response.ProgressResponseDTO(
+            COUNT(st),
+            SUM(CASE WHEN st.status = 'FINISHED' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN st.status = 'TODO' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN st.status = 'IN_PROGRESS' THEN 1 ELSE 0 END),
+            CASE 
+                WHEN COUNT(st) = 0 THEN 0.0
+                ELSE (SUM(CASE WHEN st.status = 'FINISHED' THEN 1 ELSE 0 END) * 100.0 / COUNT(st))
+            END
+        )
+        FROM SubTask st
+        WHERE st.task.taskId = :taskId
     """)
-    Integer getTotalFinishedSubTask(@Param("taskId") String taskId);
-
-    @Query(value = """
-                    SELECT COUNT(st)
-                      FROM SubTask st
-                     WHERE
-                     st.task.taskId = :taskId
-                     AND st.status = 'TODO'                            
-    """)
-    Integer getTotalToDoSubTask(@Param("taskId") String taskId);
-
-    @Query(value = """
-                    SELECT COUNT(st)
-                      FROM SubTask st
-                     WHERE
-                     st.task.taskId = :taskId
-                     AND st.status = 'IN_PROGRESS'                            
-    """)
-    Integer getTotalInProgressSubTask(@Param("taskId") String taskId);
+    ProgressResponseDTO getSubTaskSummary(@Param("taskId") String taskId);
 
     @Modifying
     @Query("""

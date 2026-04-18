@@ -21,8 +21,4 @@ public class UtilService {
 
         return new ResponseEntity<>(res, status);
     }
-
-    public Pageable createPagination(String sortingColumn, String orderDirection){
-        return null;
-    }
 }
