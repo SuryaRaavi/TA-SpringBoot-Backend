@@ -1,517 +1,435 @@
-//package com.ta.managementproject;
-//
-//import com.ta.managementproject.dto.BaseResponseDTO;
-//import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-//import com.ta.managementproject.dto.request.ReorderRequestDTO;
-//import com.ta.managementproject.dto.response.TaskDetailResponseDTO;
-//import com.ta.managementproject.dto.response.TaskResponseDTO;
-//import com.ta.managementproject.entity.*;
-//import com.ta.managementproject.repository.*;
-//import com.ta.managementproject.security.util.JwtUtils;
-//import com.ta.managementproject.service.task.TaskServiceImpl;
-//import jakarta.servlet.http.HttpServletRequest;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.junit.jupiter.api.extension.ExtendWith;
-//import org.mockito.InjectMocks;
-//import org.mockito.Mock;
-//import org.mockito.junit.jupiter.MockitoExtension;
-//import org.springframework.data.domain.Page;
-//import org.springframework.data.domain.PageImpl;
-//import org.springframework.data.domain.Pageable;
-//import org.springframework.http.HttpStatus;
-//import org.springframework.http.ResponseEntity;
-//
-//import java.time.Instant;
-//import java.util.List;
-//import java.util.Optional;
-//
-//import static org.junit.jupiter.api.Assertions.*;
-//import static org.mockito.ArgumentMatchers.eq;
-//import static org.mockito.Mockito.when;
-//
-//import static org.mockito.Mockito.*;
-//
-//@ExtendWith(MockitoExtension.class)
-//public class TaskServiceTest {
-//
-//    @InjectMocks
-//    private TaskServiceImpl taskService;
-//
-//    @Mock
-//    private TaskDb taskDb;
-//    @Mock private ProjectDb projectDb;
-//    @Mock private StageDb stageDb;
-//    @Mock private JwtUtils jwtUtils;
-//    @Mock private HttpServletRequest request;
-//    @Mock private MemberInProjectDb memberInProjectDb;
-//    @Mock private ProjectManagerDb projectManagerDb;
-//    @Mock private ProjectMemberDb projectMemberDb;
-//
-//    // ─── Shared fixtures ─────────────────────────────────────────────────────────
-//
-//    private User pmUser;
-//    private User memberUser;
-//    private Project project;
-//    private Stage stage;
-//    private Task task;
-//
-//    @BeforeEach
-//    void setUp() {
-//        pmUser = new ProjectManager();
-//        pmUser.setUsername("pm_user");
-//
-//        memberUser = new ProjectMember();
-//        memberUser.setUsername("member_user");
-//
-//        project = new Project();
-//        project.setProjectId("project-1");
-//        project.setProjectManager((ProjectManager) pmUser);
-//
-//        stage = new Stage();
-//        stage.setStageId("stage-1");
-//        stage.setProject(project);
-//
-//        task = Task.builder()
-//                .taskId("task-1")
-//                .taskName("Task One")
-//                .description("Desc")
-//                .order(1)
-//                .isDeleted(false)
-//                .stage(stage)
-//                .build();
-//    }
-//
-//    // ─── Helper: authorize as PM ──────────────────────────────────────────────────
-//
-//    private void mockAsPM() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("pm_user");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.of(stage));
-//    }
-//
-//    private void mockAsMember() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("member_user");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.of(stage));
-//        when(memberInProjectDb.findByProjectIdAndUsername("project-1", "member_user"))
-//                .thenReturn(new MemberInProject()); // non-null = authorized
-//    }
-//
-//    private void mockAsStranger() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("stranger");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.of(stage));
-//        when(memberInProjectDb.findByProjectIdAndUsername("project-1", "stranger")).thenReturn(null);
-//    }
-//
-//    // ══════════════════════════════════════════════════════════════════════════════
-//    // getAllTask
-//    // ══════════════════════════════════════════════════════════════════════════════
-//
-//    @Test
-//    void getAllTask_asPM_withoutDateFilter_returnsOk() {
-//        mockAsPM();
-//        Page<TaskResponseDTO> page = new PageImpl<>(List.of(new TaskResponseDTO()));
-//        when(taskDb.findTaskByStageId(eq("stage-1"), any(Pageable.class))).thenReturn(page);
-//
-//        ResponseEntity<?> response = taskService.getAllTask(0, 10, "stage-1", null, null, "taskName", "ascending");
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(200, body.getStatus());
-//        assertEquals("Success", body.getMessage());
-//        assertNotNull(body.getData());
-//    }
-//
-//    @Test
-//    void getAllTask_asMember_withDateFilter_returnsOk() {
-//        mockAsMember();
-//        Instant start = Instant.parse("2024-01-01T00:00:00Z");
-//        Instant end   = Instant.parse("2024-12-31T00:00:00Z");
-//        Page<TaskResponseDTO> page = new PageImpl<>(List.of());
-//        when(taskDb.findTaskByStageIdAndDueDate(eq("stage-1"), eq(start), eq(end), any(Pageable.class))).thenReturn(page);
-//
-//        ResponseEntity<?> response = taskService.getAllTask(0, 10, "stage-1", start, end, "dueDate", "descending");
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        verify(taskDb).findTaskByStageIdAndDueDate(eq("stage-1"), eq(start), eq(end), any(Pageable.class));
-//        verify(taskDb, never()).findTaskByStageId(any(), any());
-//    }
-//
-//    @Test
-//    void getAllTask_withInvalidSortingColumn_returnsBadRequest() {
-//        mockAsPM();
-//
-//        ResponseEntity<?> response = taskService.getAllTask(0, 10, "stage-1", null, null, "invalidColumn", "ascending");
-//
-//        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals("Sorting column is not valid!", body.getMessage());
-//    }
-//
-//    @Test
-//    void getAllTask_asStranger_returnsForbidden() {
-//        mockAsStranger();
-//
-//        ResponseEntity<?> response = taskService.getAllTask(0, 10, "stage-1", null, null, "taskName", "ascending");
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(403, body.getStatus());
-//    }
-//
-//    @Test
-//    void getAllTask_stageNotFound_returnsForbidden() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("pm_user");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.empty());
-//
-//        ResponseEntity<?> response = taskService.getAllTask(0, 10, "stage-1", null, null, "taskName", "ascending");
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//    }
-//
-//    @Test
-//    void getAllTask_whenExceptionThrown_returnsInternalServerError() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenThrow(new RuntimeException("JWT error"));
-//
-//        ResponseEntity<?> response = taskService.getAllTask(0, 10, "stage-1", null, null, "taskName", "ascending");
-//
-//        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(500, body.getStatus());
-//        assertEquals("JWT error", body.getMessage());
-//    }
-//
-//    // ══════════════════════════════════════════════════════════════════════════════
-//    // searchTask
-//    // ══════════════════════════════════════════════════════════════════════════════
-//
-//    @Test
-//    void searchTask_asPM_returnsOk() {
-//        mockAsPM();
-//        Page<TaskResponseDTO> page = new PageImpl<>(List.of(new TaskResponseDTO()));
-//        when(taskDb.searchTaskByQuery(eq("stage-1"), eq("keyword"), any(Pageable.class))).thenReturn(page);
-//
-//        ResponseEntity<?> response = taskService.searchTask(0, 10, "stage-1", "keyword", "taskName", "ascending");
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        verify(taskDb).searchTaskByQuery(eq("stage-1"), eq("keyword"), any(Pageable.class));
-//    }
-//
-//    @Test
-//    void searchTask_withInvalidSortingColumn_returnsBadRequest() {
-//        mockAsPM();
-//
-//        ResponseEntity<?> response = taskService.searchTask(0, 10, "stage-1", "keyword", "badColumn", "ascending");
-//
-//        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-//    }
-//
-//    @Test
-//    void searchTask_asStranger_returnsForbidden() {
-//        mockAsStranger();
-//
-//        ResponseEntity<?> response = taskService.searchTask(0, 10, "stage-1", "keyword", "taskName", "ascending");
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//    }
-//
-//    @Test
-//    void searchTask_descendingOrder_usesDescendingPageable() {
-//        mockAsPM();
-//        Page<TaskResponseDTO> page = new PageImpl<>(List.of());
-//        when(taskDb.searchTaskByQuery(eq("stage-1"), eq("q"), any(Pageable.class))).thenReturn(page);
-//
-//        ResponseEntity<?> response = taskService.searchTask(0, 5, "stage-1", "q", "createdAt", "descending");
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//    }
-//
-//    @Test
-//    void searchTask_whenExceptionThrown_returnsInternalServerError() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenThrow(new RuntimeException("error"));
-//
-//        ResponseEntity<?> response = taskService.searchTask(0, 10, "stage-1", "q", "taskName", "ascending");
-//
-//        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//    }
-//
-//    // ══════════════════════════════════════════════════════════════════════════════
-//    // addNewTask
-//    // ══════════════════════════════════════════════════════════════════════════════
-//
-//    @Test
-//    void addNewTask_asPM_returnsOk() {
-//        mockAsPM();
-//        when(taskDb.getTotalTask("stage-1")).thenReturn(3);
-//
-//        CreateUpdateTaskRequestDTO dto = new CreateUpdateTaskRequestDTO();
-//        dto.setTaskName("New Task");
-//        dto.setDescription("Desc");
-//
-//        ResponseEntity<?> response = taskService.addNewTask("stage-1", dto);
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(201, body.getStatus());
-//        assertEquals("Task created successfully", body.getMessage());
-//        verify(taskDb).save(argThat(t -> t.getOrder() == 4 && !t.isDeleted()));
-//    }
-//
-//    @Test
-//    void addNewTask_notPM_returnsForbidden() {
-//        // mockAsMember() makes isProjectManager return false (not PM)
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("member_user");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.of(stage));
-//
-//        ResponseEntity<?> response = taskService.addNewTask("stage-1", new CreateUpdateTaskRequestDTO());
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//        verify(taskDb, never()).save(any());
-//    }
-//
-//    @Test
-//    void addNewTask_stageNotFound_returnsForbidden() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("pm_user");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.empty());
-//
-//        ResponseEntity<?> response = taskService.addNewTask("stage-1", new CreateUpdateTaskRequestDTO());
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//    }
-//
-//    @Test
-//    void addNewTask_whenExceptionThrown_returnsInternalServerError() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenThrow(new RuntimeException("DB error"));
-//
-//        ResponseEntity<?> response = taskService.addNewTask("stage-1", new CreateUpdateTaskRequestDTO());
-//
-//        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(500, body.getStatus());
-//    }
-//
-//    // ══════════════════════════════════════════════════════════════════════════════
-//    // updateTask
-//    // ══════════════════════════════════════════════════════════════════════════════
-//
-//    @Test
-//    void updateTask_asPM_returnsOk() {
-//        mockAsPM();
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//
-//        CreateUpdateTaskRequestDTO dto = new CreateUpdateTaskRequestDTO();
-//        dto.setTaskName("Updated Name");
-//        dto.setDescription("Updated Desc");
-//
-//        ResponseEntity<?> response = taskService.updateTask("task-1", dto);
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(200, body.getStatus());
-//        assertEquals("Task updated successfully", body.getMessage());
-//        verify(taskDb).save(task);
-//        assertEquals("Updated Name", task.getTaskName());
-//    }
-//
-//    @Test
-//    void updateTask_asMember_returnsOk() {
-//        mockAsMember();
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//
-//        ResponseEntity<?> response = taskService.updateTask("task-1", new CreateUpdateTaskRequestDTO());
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//    }
-//
-//    @Test
-//    void updateTask_taskNotFound_returns404() {
-//        when(taskDb.findById("task-1")).thenReturn(Optional.empty());
-//
-//        ResponseEntity<?> response = taskService.updateTask("task-1", new CreateUpdateTaskRequestDTO());
-//
-//        assertEquals(404, response.getStatusCode().value());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals("Task not found", body.getMessage());
-//    }
-//
-//    @Test
-//    void updateTask_asStranger_returnsForbidden() {
-//        mockAsStranger();
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//
-//        ResponseEntity<?> response = taskService.updateTask("task-1", new CreateUpdateTaskRequestDTO());
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//        verify(taskDb, never()).save(any());
-//    }
-//
-//    @Test
-//    void updateTask_whenExceptionThrown_returnsInternalServerError() {
-//        when(taskDb.findById("task-1")).thenThrow(new RuntimeException("DB error"));
-//
-//        ResponseEntity<?> response = taskService.updateTask("task-1", new CreateUpdateTaskRequestDTO());
-//
-//        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//    }
-//
-//    // ══════════════════════════════════════════════════════════════════════════════
-//    // getDetailTask
-//    // ══════════════════════════════════════════════════════════════════════════════
-//
-//    @Test
-//    void getDetailTask_asPM_returnsOk() {
-//        mockAsPM();
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//
-//        ResponseEntity<?> response = taskService.getDetailTask("task-1");
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(200, body.getStatus());
-//        assertInstanceOf(TaskDetailResponseDTO.class, body.getData());
-//        TaskDetailResponseDTO data = (TaskDetailResponseDTO) body.getData();
-//        assertEquals("task-1", data.getTaskId());
-//        assertEquals("Task One", data.getTaskName());
-//    }
-//
-//    @Test
-//    void getDetailTask_taskWithNullMember_showsUnassigned() {
-//        mockAsPM();
-//        task.setProjectMember(null);
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//
-//        ResponseEntity<?> response = taskService.getDetailTask("task-1");
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        TaskDetailResponseDTO data = (TaskDetailResponseDTO) ((BaseResponseDTO<?>) response.getBody()).getData();
-//        assertEquals("Unassigned", data.getProjectMemberName());
-//    }
-//
-//    @Test
-//    void getDetailTask_taskNotFound_returns404() {
-//        when(taskDb.findById("task-1")).thenReturn(Optional.empty());
-//
-//        ResponseEntity<?> response = taskService.getDetailTask("task-1");
-//
-//        assertEquals(404, response.getStatusCode().value());
-//        assertEquals("Task not found", ((BaseResponseDTO<?>) response.getBody()).getMessage());
-//    }
-//
-//    @Test
-//    void getDetailTask_asStranger_returnsForbidden() {
-//        mockAsStranger();
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//
-//        ResponseEntity<?> response = taskService.getDetailTask("task-1");
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//    }
-//
-//    @Test
-//    void getDetailTask_whenExceptionThrown_returnsInternalServerError() {
-//        when(taskDb.findById("task-1")).thenThrow(new RuntimeException("error"));
-//
-//        ResponseEntity<?> response = taskService.getDetailTask("task-1");
-//
-//        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//    }
-//
-//    // ══════════════════════════════════════════════════════════════════════════════
-//    // deleteTaskById
-//    // ══════════════════════════════════════════════════════════════════════════════
-//
-//    @Test
-//    void deleteTaskById_asPM_returnsOk() {
-//        mockAsPM();
-//
-//        ResponseEntity<?> response = taskService.deleteTaskById("stage-1", "task-1");
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(200, body.getStatus());
-//        assertEquals("Tasks deleted successfully", body.getMessage());
-//        verify(taskDb).deleteById("task-1");
-//    }
-//
-//    @Test
-//    void deleteTaskById_notPM_returnsForbidden() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("member_user");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.of(stage));
-//
-//        ResponseEntity<?> response = taskService.deleteTaskById("stage-1", "task-1");
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//        verify(taskDb, never()).deleteById(any());
-//    }
-//
-//    @Test
-//    void deleteTaskById_whenExceptionThrown_returnsInternalServerError() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenThrow(new RuntimeException("error"));
-//
-//        ResponseEntity<?> response = taskService.deleteTaskById("stage-1", "task-1");
-//
-//        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//    }
-//
-//    // ══════════════════════════════════════════════════════════════════════════════
-//    // reorderTask
-//    // ══════════════════════════════════════════════════════════════════════════════
-//
-//    @Test
-//    void reorderTask_asPM_updatesOrderAndReturnsOk() {
-//        mockAsPM();
-//
-//        Task task2 = Task.builder().taskId("task-2").order(0).stage(stage).build();
-//        ReorderRequestDTO r1 = new ReorderRequestDTO("task-1", 1);
-//        ReorderRequestDTO r2 = new ReorderRequestDTO("task-2", 0);
-//
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//        when(taskDb.findById("task-2")).thenReturn(Optional.of(task2));
-//
-//        ResponseEntity<?> response = taskService.reorderTask("stage-1", List.of(r1, r2));
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        BaseResponseDTO<?> body = (BaseResponseDTO<?>) response.getBody();
-//        assertEquals(200, body.getStatus());
-//        assertEquals("Tasks reordered successfully", body.getMessage());
-//        assertEquals(1, task.getOrder());
-//        assertEquals(0, task2.getOrder());
-//        verify(taskDb, times(2)).save(any(Task.class));
-//    }
-//
-//    @Test
-//    void reorderTask_skipsNotFoundTask() {
-//        mockAsPM();
-//
-//        ReorderRequestDTO r1 = new ReorderRequestDTO("task-1", 2);
-//        ReorderRequestDTO r2 = new ReorderRequestDTO("task-missing", 0);
-//
-//        when(taskDb.findById("task-1")).thenReturn(Optional.of(task));
-//        when(taskDb.findById("task-missing")).thenReturn(Optional.empty());
-//
-//        ResponseEntity<?> response = taskService.reorderTask("stage-1", List.of(r1, r2));
-//
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        // Only task-1 should be saved; task-missing is skipped silently
-//        verify(taskDb, times(1)).save(any(Task.class));
-//    }
-//
-//    @Test
-//    void reorderTask_notPM_returnsForbidden() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn("member_user");
-//        when(stageDb.findById("stage-1")).thenReturn(Optional.of(stage));
-//
-//        ResponseEntity<?> response = taskService.reorderTask("stage-1", List.of());
-//
-//        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-//        verify(taskDb, never()).save(any());
-//    }
-//
-//    @Test
-//    void reorderTask_whenExceptionThrown_returnsInternalServerError() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenThrow(new RuntimeException("error"));
-//
-//        ResponseEntity<?> response = taskService.reorderTask("stage-1", List.of());
-//
-//        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//    }
-//}
+package com.ta.managementproject;
+
+import com.ta.managementproject.dto.BaseResponseDTO;
+import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
+import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.dto.response.CrudResponseDTO;
+import com.ta.managementproject.dto.response.TaskDetailResponseDTO;
+import com.ta.managementproject.dto.response.TaskResponseDTO;
+import com.ta.managementproject.entity.*;
+import com.ta.managementproject.repository.*;
+import com.ta.managementproject.security.util.JwtUtils;
+import com.ta.managementproject.service.UtilService;
+import com.ta.managementproject.service.auth.AuthService;
+import com.ta.managementproject.service.task.TaskServiceImpl;
+import com.ta.managementproject.service.user.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class TaskServiceTest {
+
+    @Mock private ProjectManagerDb projectManagerDb;
+    @Mock private ProjectMemberDb projectMemberDb;
+    @Mock private TaskDb taskDb;
+    @Mock private ProjectDb projectDb;
+    @Mock private StageDb stageDb;
+    @Mock private JwtUtils jwtUtils;
+    @Mock private HttpServletRequest request;
+    @Mock private MemberInProjectDb memberInProjectDb;
+    @Mock private UserService userService;
+    @Mock private SubTaskDb subTaskDb;
+    @Mock private AuthService authService;
+    @Mock private UtilService utilService;
+    @Mock private TaskDbWithDsl taskDbWithDsl;
+
+    @InjectMocks
+    private TaskServiceImpl taskService;
+
+    private static final String USERNAME  = "user_test";
+    private static final String STAGE_ID  = "stage-001";
+    private static final String TASK_ID   = "task-001";
+
+    private Project      mockProject;
+    private Stage        mockStage;
+    private Task         mockTask;
+    private ProjectMember mockMember;
+
+    @BeforeEach
+    void setUp() {
+        mockProject = Project.builder()
+                .projectId("project-001")
+                .projectName("Test Project")
+                .build();
+
+        mockStage = Stage.builder()
+                .stageId(STAGE_ID)
+                .stageName("Stage Alpha")
+                .project(mockProject)
+                .build();
+
+        mockMember = ProjectMember.builder()
+                .username(USERNAME)
+                .fullName("Test User")
+                .build();
+
+        mockTask = Task.builder()
+                .taskId(TASK_ID)
+                .taskName("Task Alpha")
+                .description("Desc")
+                .priority(1)
+                .dueDate(java.time.Instant.now())
+                .status("TODO")
+                .projectMember(mockMember)
+                .stage(mockStage)
+                .order(1)
+                .subTaskList(List.of())
+                .build();
+
+        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * getAllTask
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void getAllTask_withValidAccess_shouldReturnPageOfTasks() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaskResponseDTO> mockPage = new PageImpl<>(List.of());
+        ResponseEntity<BaseResponseDTO<Page<TaskResponseDTO>>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
+        when(taskDbWithDsl.findAll(eq(STAGE_ID), any(), any(), any(), any(), any(), any(), eq(pageable)))
+                .thenReturn(mockPage);
+        when(utilService.buildResponse(HttpStatus.OK, "SUCCESS", mockPage)).thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.getAllTask(pageable, STAGE_ID, null, null, null, null, null, null);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(taskDbWithDsl).findAll(eq(STAGE_ID), any(), any(), any(), any(), any(), any(), eq(pageable));
+    }
+
+    @Test
+    void getAllTask_withAllFilters_shouldPassFiltersToRepository() {
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDate today = LocalDate.now();
+        Page<TaskResponseDTO> mockPage = new PageImpl<>(List.of());
+        ResponseEntity<BaseResponseDTO<Page<TaskResponseDTO>>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
+        when(taskDbWithDsl.findAll(eq(STAGE_ID), eq(today), eq(today), eq(today), eq(1), eq(1), eq("Alpha"), eq(pageable)))
+                .thenReturn(mockPage);
+        when(utilService.buildResponse(HttpStatus.OK, "SUCCESS", mockPage)).thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.getAllTask(pageable, STAGE_ID, today, today, today, 1, 1, "Alpha");
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(taskDbWithDsl).findAll(eq(STAGE_ID), eq(today), eq(today), eq(today), eq(1), eq(1), eq("Alpha"), eq(pageable));
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * addNewTask
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void addNewTask_withValidRequest_shouldSaveTaskAndReturnCreated() {
+        CreateUpdateTaskRequestDTO requestDTO = new CreateUpdateTaskRequestDTO();
+        requestDTO.setTaskName("New Task");
+        requestDTO.setDescription("Desc");
+        requestDTO.setPriority(2);
+        requestDTO.setDueDate(LocalDate.now().plusDays(5));
+        requestDTO.setProjectMember(mockMember);
+
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.status(HttpStatus.CREATED).build();
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(taskDb.getTotalTask(STAGE_ID)).thenReturn(3);
+        when(utilService.buildResponse(eq(HttpStatus.CREATED), eq("Task created successfully"), any()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.addNewTask(STAGE_ID, requestDTO);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        verify(taskDb).save(any(Task.class));
+    }
+
+    @Test
+    void addNewTask_shouldSetOrderAsCurrentTotalPlusOne() {
+        CreateUpdateTaskRequestDTO requestDTO = new CreateUpdateTaskRequestDTO();
+        requestDTO.setTaskName("Task X");
+        requestDTO.setDescription("Desc");
+        requestDTO.setPriority(1);
+        requestDTO.setDueDate(LocalDate.now());
+        requestDTO.setProjectMember(mockMember);
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(taskDb.getTotalTask(STAGE_ID)).thenReturn(4);
+        when(utilService.buildResponse(eq(HttpStatus.CREATED), anyString(), any()))
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
+
+        taskService.addNewTask(STAGE_ID, requestDTO);
+
+        verify(taskDb).save(argThat(t -> t.getOrder() == 5));
+    }
+
+    @Test
+    void addNewTask_shouldSetStatusToTodo() {
+        CreateUpdateTaskRequestDTO requestDTO = new CreateUpdateTaskRequestDTO();
+        requestDTO.setTaskName("Task X");
+        requestDTO.setDescription("Desc");
+        requestDTO.setPriority(1);
+        requestDTO.setDueDate(LocalDate.now());
+        requestDTO.setProjectMember(mockMember);
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(taskDb.getTotalTask(STAGE_ID)).thenReturn(0);
+        when(utilService.buildResponse(eq(HttpStatus.CREATED), anyString(), any()))
+                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
+
+        taskService.addNewTask(STAGE_ID, requestDTO);
+
+        verify(taskDb).save(argThat(t -> "TODO".equals(t.getStatus())));
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * updateTask
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void updateTask_withValidRequest_shouldUpdateFieldsAndSave() {
+        CreateUpdateTaskRequestDTO requestDTO = new CreateUpdateTaskRequestDTO();
+        requestDTO.setTaskName("Updated Task");
+        requestDTO.setDescription("Updated Desc");
+        requestDTO.setPriority(3);
+        requestDTO.setDueDate(LocalDate.now().plusDays(3));
+        requestDTO.setStatus("IN_PROGRESS");
+        requestDTO.setProjectMember(mockMember);
+
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.status(HttpStatus.CREATED).build();
+
+        when(authService.validateTask(TASK_ID)).thenReturn(mockTask);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.CREATED), eq("Task updated successfully"), any()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.updateTask(TASK_ID, requestDTO);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        verify(taskDb).save(mockTask);
+        assertThat(mockTask.getTaskName()).isEqualTo("Updated Task");
+        assertThat(mockTask.getStatus()).isEqualTo("IN_PROGRESS");
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * getDetailTask — with assigned member
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void getDetailTask_withAssignedMember_shouldReturnFullNameInResponse() {
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateTask(TASK_ID)).thenReturn(mockTask);
+        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.getDetailTask(TASK_ID);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(utilService).buildResponse(eq(HttpStatus.OK), eq("SUCCESS"),
+                argThat(dto -> "Test User".equals(((TaskDetailResponseDTO) dto).getProjectMemberName())));
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * getDetailTask — with no assigned member
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void getDetailTask_withNoAssignedMember_shouldReturnUnassigned() {
+        Task taskNoMember = mockTask.toBuilder().projectMember(null).build();
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateTask(TASK_ID)).thenReturn(taskNoMember);
+        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+
+        taskService.getDetailTask(TASK_ID);
+
+        verify(utilService).buildResponse(eq(HttpStatus.OK), eq("SUCCESS"),
+                argThat(dto -> "Unassigned".equals(((TaskDetailResponseDTO) dto).getProjectMemberName())));
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * deleteTaskById — no subtasks
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void deleteTaskById_withNoSubTasks_shouldDeleteAndUpdateOrder() {
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateTask(TASK_ID)).thenReturn(mockTask);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Tasks deleted successfully"), isNull()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.deleteTaskById(STAGE_ID, TASK_ID);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(subTaskDb, never()).deleteAll(any());
+        verify(taskDb).deleteById(TASK_ID);
+        verify(taskDb).updateTaskOrderAfterDelete(STAGE_ID, 1);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * deleteTaskById — with subtasks (cascade delete)
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void deleteTaskById_withSubTasks_shouldDeleteSubTasksThenTask() {
+        SubTask mockSubTask = SubTask.builder().subTaskId("sub-001").build();
+        Task taskWithSubs = mockTask.toBuilder().subTaskList(List.of(mockSubTask)).build();
+
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateTask(TASK_ID)).thenReturn(taskWithSubs);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Tasks deleted successfully"), isNull()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.deleteTaskById(STAGE_ID, TASK_ID);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(subTaskDb).deleteAll(List.of(mockSubTask));
+        verify(taskDb).deleteById(TASK_ID);
+        verify(taskDb).updateTaskOrderAfterDelete(STAGE_ID, 1);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * reorderTask — move up (new order < current)
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void reorderTask_whenMovingUp_shouldCallUpdateTaskOrderAbove() {
+        ReorderRequestDTO requestDTO = new ReorderRequestDTO();
+        requestDTO.setId(TASK_ID);
+        requestDTO.setOrder(1);
+
+        Task taskOrder3 = mockTask.toBuilder().order(3).build();
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        when(authService.validateTask(TASK_ID)).thenReturn(taskOrder3);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Tasks reordered successfully"), isNull()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.reorderTask(STAGE_ID, requestDTO);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(taskDb).updateTaskOrderAbove(STAGE_ID, 0, 3);
+        verify(taskDb).save(taskOrder3);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * reorderTask — move down (new order > current)
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void reorderTask_whenMovingDown_shouldCallUpdateTaskOrderBelow() {
+        ReorderRequestDTO requestDTO = new ReorderRequestDTO();
+        requestDTO.setId(TASK_ID);
+        requestDTO.setOrder(4);
+
+        Task taskOrder2 = mockTask.toBuilder().order(2).build();
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        when(authService.validateTask(TASK_ID)).thenReturn(taskOrder2);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Tasks reordered successfully"), isNull()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.reorderTask(STAGE_ID, requestDTO);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(taskDb).updateTaskOrderBelow(STAGE_ID, 4, 3);
+        verify(taskDb).save(taskOrder2);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * reorderTask — same order (no-op on ordering)
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void reorderTask_whenSameOrder_shouldNotCallUpdateMethods() {
+        ReorderRequestDTO requestDTO = new ReorderRequestDTO();
+        requestDTO.setId(TASK_ID);
+        requestDTO.setOrder(1); // same as mockTask.order
+
+        when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
+        when(authService.validateTask(TASK_ID)).thenReturn(mockTask);
+        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Tasks reordered successfully"), isNull()))
+                .thenReturn(ResponseEntity.ok().build());
+
+        taskService.reorderTask(STAGE_ID, requestDTO);
+
+        verify(taskDb, never()).updateTaskOrderAbove(any(), any(), any());
+        verify(taskDb, never()).updateTaskOrderBelow(any(), any(), any());
+        verify(taskDb).save(mockTask);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+     * updateTaskStatus
+     * ══════════════════════════════════════════════════════════════════════ */
+
+    @Test
+    void updateTaskStatus_withValidStatus_shouldUpdateAndSave() {
+        CreateUpdateTaskRequestDTO requestDTO = new CreateUpdateTaskRequestDTO();
+        requestDTO.setStatus("IN_PROGRESS");
+
+        ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
+
+        when(authService.validateTask(TASK_ID)).thenReturn(mockTask);
+        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Task status updated successfully"), any()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<?> result = taskService.updateTaskStatus(TASK_ID, requestDTO);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(mockTask.getStatus()).isEqualTo("IN_PROGRESS");
+        verify(taskDb).save(mockTask);
+    }
+
+    @Test
+    void updateTaskStatus_shouldReturnCrudResponseDTOWithTaskId() {
+        CreateUpdateTaskRequestDTO requestDTO = new CreateUpdateTaskRequestDTO();
+        requestDTO.setStatus("DONE");
+
+        when(authService.validateTask(TASK_ID)).thenReturn(mockTask);
+        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Task status updated successfully"),
+                argThat(dto -> TASK_ID.equals(((CrudResponseDTO) dto).getMessage()))))
+                .thenReturn(ResponseEntity.ok().build());
+
+        taskService.updateTaskStatus(TASK_ID, requestDTO);
+
+        verify(utilService).buildResponse(eq(HttpStatus.OK), eq("Task status updated successfully"),
+                argThat(dto -> TASK_ID.equals(((CrudResponseDTO) dto).getMessage())));
+    }
+}
