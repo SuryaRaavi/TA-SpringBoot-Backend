@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 public class ProgressResponseDTO {
+    private Long totalTask;
+    private Long finishedTask;
+    private Long todoTask;
+    private Long inProgressTask;
     private Double progress;
-    private Integer totalTask;
-    private Integer finishedTask;
-    private Integer todoTask;
-    private Integer inProgressTask;
 }

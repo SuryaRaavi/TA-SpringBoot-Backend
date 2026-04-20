@@ -19,7 +19,7 @@ public class UserRestController {
     private UserService userService;
 
     @PostMapping("")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request, BindingResult bindingResult){
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request, BindingResult bindingResult) throws Exception {
         return userService.addNewUser(request);
     }
 

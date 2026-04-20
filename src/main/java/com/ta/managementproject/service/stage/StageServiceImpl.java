@@ -2,273 +2,217 @@ package com.ta.managementproject.service.stage;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.ProgressResponseDTO;
 import com.ta.managementproject.dto.response.StageResponseDTO;
 import com.ta.managementproject.entity.Project;
 import com.ta.managementproject.entity.Stage;
+import com.ta.managementproject.entity.Task;
 import com.ta.managementproject.entity.User;
 import com.ta.managementproject.enums.Role;
-import com.ta.managementproject.repository.ProjectDb;
-import com.ta.managementproject.repository.StageDb;
-import com.ta.managementproject.repository.TaskDb;
-import com.ta.managementproject.repository.UserDb;
+import com.ta.managementproject.repository.*;
 import com.ta.managementproject.security.util.JwtUtils;
+import com.ta.managementproject.service.UtilService;
+import com.ta.managementproject.service.auth.AuthService;
+import com.ta.managementproject.service.task.TaskService;
+import com.ta.managementproject.service.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 
 @Service
 @Transactional
 public class StageServiceImpl implements StageService{
-    @Autowired
-    private StageDb stageDb;
 
-    @Autowired
-    private HttpServletRequest request;
+    private final StageDb stageDb;
+    private final HttpServletRequest request;
+    private final JwtUtils jwtUtils;
+    private final UserDb userDb;
+    private final ProjectDb projectDb;
+    private final TaskDb taskDb;
+    private final UserService userService;
+    private final SubTaskDb subTaskDb;
+    private final TaskService taskService;
+    private final UtilService utilService;
+    private final AuthService authService;
+    private final StageDbWithDsl stageDbWithDsl;
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private UserDb userDb;
-
-    @Autowired
-    private ProjectDb projectDb;
-
-    @Autowired
-    private TaskDb taskDb;
+    public StageServiceImpl(
+            StageDb stageDb,
+            HttpServletRequest request,
+            JwtUtils jwtUtils,
+            UserDb userDb,
+            ProjectDb projectDb,
+            TaskDb taskDb,
+            UserService userService,
+            SubTaskDb subTaskDb,
+            TaskService taskService,
+            UtilService utilService,
+            AuthService authService,
+            StageDbWithDsl stageDbWithDsl
+    ) {
+        this.stageDb = stageDb;
+        this.request = request;
+        this.jwtUtils = jwtUtils;
+        this.userDb = userDb;
+        this.projectDb = projectDb;
+        this.taskDb = taskDb;
+        this.userService = userService;
+        this.subTaskDb = subTaskDb;
+        this.taskService = taskService;
+        this.utilService = utilService;
+        this.authService = authService;
+        this.stageDbWithDsl = stageDbWithDsl;
+    }
 
     @Override
     public ResponseEntity<?> getAllStage(String projectId) {
-        var baseResponseDTO = new BaseResponseDTO<List<StageResponseDTO>>();
+        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
 
-        try{
-            Role userRole = jwtUtils.getUserRoleFromJwtToken(request);
+        Project project = authService.validateProject(projectId);
 
-            String username = jwtUtils.getUserNameFromRequest(request);
+        authService.validateManagerAndMemberAccess(project, user.getUsername());
 
-            if (userRole == Role.PROJECT_MANAGER){
-                baseResponseDTO.setData(stageDb.findAllByProjectIdAndUsernamePM(username, projectId));
-            }else{
-                baseResponseDTO.setData(stageDb.findAllByProjectIdAndUsernamePMB(username, projectId));
-            }
+        String username = jwtUtils.getUserNameFromRequest(request);
 
-            baseResponseDTO.setMessage("SUCCESS");
-            baseResponseDTO.setStatus(HttpStatus.OK.value());
-            baseResponseDTO.setTimestamp(new Date());
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.OK);
-        }catch(Exception e){
-            baseResponseDTO.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage(String.format(e.getMessage()));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        List<StageResponseDTO> responses =
+                Role.valueOf(user.getRole().getName()) == Role.PROJECT_MANAGER ?
+                stageDbWithDsl.findAll(username, null, projectId) :
+                stageDbWithDsl.findAll(null, username, projectId);
+
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responses);
     }
 
     @Override
     public ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO) {
-        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
+        String username = jwtUtils.getUserNameFromRequest(request);
 
-        try{
-            Project project = projectDb.findByProjectId(projectId);
+        Project project = authService.validateProject(projectId);
 
-            String username = jwtUtils.getUserNameFromRequest(request);
+        authService.validateManagerAccess(project, username);
 
-            if (!project.getProjectManager().getUsername().equals(username)){
-                baseResponseDTO.setStatus(HttpStatus.FORBIDDEN.value());
-                baseResponseDTO.setTimestamp(new Date());
-                baseResponseDTO.setMessage("Access Not Allowed!");
-                return new ResponseEntity<>(baseResponseDTO, HttpStatus.FORBIDDEN);
-            }
+        Stage newStage = Stage.builder()
+                .stageName(requestDTO.getStageName())
+                .description(requestDTO.getDescription())
+                .createdAt(Instant.now())
+                .order((int) (long) stageDbWithDsl.totalStageByProject(projectId) + 1)
+                .project(project)
+                .build();
 
-            Stage newStage = Stage.builder()
-                    .stageName(requestDTO.getStageName())
-                    .description(requestDTO.getDescription())
-                    .createdAt(LocalDateTime.now())
-                    .order(stageDb.getTotalStageByProject(projectId))
-                    .project(project)
-                    .build();
+        stageDb.save(newStage);
 
-            stageDb.save(newStage);
-
-            baseResponseDTO.setStatus(HttpStatus.OK.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage("SUCCESS");
-            baseResponseDTO.setData(new CrudResponseDTO("SUCCESS", "New stage has been added!"));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.OK);
-        }catch(Exception e){
-            baseResponseDTO.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage(String.format(e.getMessage()));
-            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "New stage has been added!"));
     }
 
     @Override
     public ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO) {
-        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
+        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
 
-        try{
-            Stage stage = stageDb.findByStageId(stageId);
-            User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+        Stage stage = authService.validateStage(stageId);
 
-            if (!stage.getProject().getProjectManager().getUsername().equals(user.getUsername())){
-                baseResponseDTO.setStatus(HttpStatus.FORBIDDEN.value());
-                baseResponseDTO.setTimestamp(new Date());
-                baseResponseDTO.setMessage("Access Not Allowed!");
-                return new ResponseEntity<>(baseResponseDTO, HttpStatus.FORBIDDEN);
-            }
+        authService.validateManagerAccess(stage.getProject(), user.getUsername());
 
-            stageDb.save(
-                    stage.toBuilder()
-                            .stageName(requestDTO.getStageName() == null ? stage.getStageName() : requestDTO.getStageName())
-                            .description(requestDTO.getDescription() == null ? stage.getDescription() : requestDTO.getDescription())
-                            .build()
-            );
+        stageDb.save(
+                stage.toBuilder()
+                        .stageName(requestDTO.getStageName() == null ? stage.getStageName() : requestDTO.getStageName())
+                        .description(requestDTO.getDescription() == null ? stage.getDescription() : requestDTO.getDescription())
+                        .build()
+        );
 
-            baseResponseDTO.setStatus(HttpStatus.OK.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage("SUCCESS");
-            baseResponseDTO.setData(new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.OK);
-        }catch(Exception e){
-            baseResponseDTO.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage(String.format(e.getMessage()));
-            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
+        return utilService.buildResponse(HttpStatus.OK,"SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
         }
+
+
+    @Override
+    public ResponseEntity<BaseResponseDTO<ProgressResponseDTO>> getStageStatistics(String stageId) {
+        String username = jwtUtils.getUserNameFromRequest(request);
+        Stage stage = authService.validateStage(stageId);
+
+        Project project = stage.getProject();
+        authService.validateManagerAndMemberAccess(project, username);
+
+        ProgressResponseDTO responseDTO = new ProgressResponseDTO();
+
+        // Jika task memiliki subtask, akumulasi task berdasarkan subtask
+        Long totalFinishedTask = 0L;
+        Long totalTask = 0L;
+        Long totalTodoTask = 0L;
+        Long totalInProgressTask = 0L;
+
+        for (Task t: stage.getTaskList()){
+            if (t.getSubTaskList().isEmpty()){
+                ProgressResponseDTO progressResponseDTO = subTaskDb.getSubTaskSummary(t.getTaskId());
+                totalFinishedTask += progressResponseDTO.getFinishedTask();
+                totalTask += progressResponseDTO.getTotalTask();
+                totalTodoTask += progressResponseDTO.getTodoTask();
+                totalInProgressTask += progressResponseDTO.getInProgressTask();
+            }else{
+                switch (t.getStatus()) {
+                    case "TODO" -> totalTodoTask++;
+                    case "IN_PROGRESS" -> totalInProgressTask++;
+                    default -> totalFinishedTask++;
+                }
+
+                totalTask++;
+            }
+        }
+        responseDTO.setTotalTask(totalTask);
+        responseDTO.setFinishedTask(totalFinishedTask);
+        responseDTO.setTodoTask(totalTodoTask);
+        responseDTO.setInProgressTask(totalInProgressTask);
+
+        responseDTO.setProgress(totalTask == 0 ? 0.00 : (totalFinishedTask * 1.0 / totalTask * 100));
+
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO);
     }
 
     @Override
-    public ResponseEntity<?> getStageStatistics(String stageId) {
-        var baseResponseDTO = new BaseResponseDTO<ProgressResponseDTO>();
+    @Transactional
+    public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) {
+        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+        Project project = authService.validateProject(projectId);
 
-        try{
+        authService.validateManagerAccess(project, user.getUsername());
 
-            Stage stage = stageDb.findByStageId(stageId);
-            Project project = stage.getProject();
-            String username = jwtUtils.getUserNameFromRequest(request);
+        Stage stage = stageDb.findByStageId(requestDTO.getId());
 
-            if (
-                    !project.getProjectManager().getUsername().equals(username) &&
-                            project.getMemberInProjectList().stream().noneMatch(
-                                    p -> p.getProjectMember().getUsername().equals(username)
-
-                            )){
-                baseResponseDTO.setStatus(HttpStatus.FORBIDDEN.value());
-                baseResponseDTO.setTimestamp(new Date());
-                baseResponseDTO.setMessage("Access Not Allowed!");
-                return new ResponseEntity<>(baseResponseDTO, HttpStatus.FORBIDDEN);
-            }
-
-            ProgressResponseDTO responseDTO = new ProgressResponseDTO();
-
-            Integer totalFinishedTask = taskDb.getTotalFinishedTask(stageId);
-            Integer totalTask = taskDb.getTotalTask(stageId);
-
-            responseDTO.setTotalTask(totalTask);
-            responseDTO.setFinishedTask(totalFinishedTask);
-            responseDTO.setTodoTask(taskDb.getTotalToDoTask(stageId));
-            responseDTO.setInProgressTask(taskDb.getTotalInProgressTask(stageId));
-
-            responseDTO.setProgress(totalTask == 0 ? 0.00 : (totalFinishedTask * 1.0 / totalTask * 100));
-
-            baseResponseDTO.setData(responseDTO);
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage("SUCCESS");
-            baseResponseDTO.setStatus(HttpStatus.OK.value());
-
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.OK);
-        }catch(Exception e){
-            baseResponseDTO.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage(String.format(e.getMessage()));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
+        if (stage.getOrder() > requestDTO.getOrder()){
+            stageDb.updateStageOrderAbove(projectId, requestDTO.getOrder() - 1, stage.getOrder());
+        }else if (stage.getOrder() < requestDTO.getOrder()){
+            stageDb.updateStageOrderBelow(projectId, requestDTO.getOrder(), stage.getOrder() + 1);
         }
-    }
 
-    @Override
-    public ResponseEntity<?> reorderStage(String projectId, List<ReorderRequestDTO> requestDTOS) {
-        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
+        stage.setOrder(requestDTO.getOrder());
+        stageDb.save(stage);
 
-        try{
-            Project project = projectDb.findByProjectId(projectId);
-            User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
-
-            if (!project.getProjectManager().getUsername().equals(user.getUsername())){
-                baseResponseDTO.setStatus(HttpStatus.FORBIDDEN.value());
-                baseResponseDTO.setTimestamp(new Date());
-                baseResponseDTO.setMessage("Access Not Allowed!");
-                return new ResponseEntity<>(baseResponseDTO, HttpStatus.FORBIDDEN);
-            }
-
-            List<Stage> stages = new ArrayList<>();
-
-            for (ReorderRequestDTO requestDTO: requestDTOS){
-                Stage stage = stageDb.findByStageId(requestDTO.getId());
-
-                stage.setOrder(requestDTO.getOrder());
-                stages.add(stage);
-            }
-
-            stageDb.saveAll(stages);
-
-            baseResponseDTO.setStatus(HttpStatus.OK.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage("SUCCESS");
-            baseResponseDTO.setData(new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.OK);
-        }catch(Exception e){
-            baseResponseDTO.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage(String.format(e.getMessage()));
-            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
     }
 
     @Override
     @Transactional
     public ResponseEntity<?> deleteStageById(String projectId, String stageId) {
-        var baseResponseDTO = new BaseResponseDTO<CrudResponseDTO>();
-
-        try{
-            Project project = projectDb.findByProjectId(projectId);
             User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+            Project project = authService.validateProject(projectId);
 
-            if (!project.getProjectManager().getUsername().equals(user.getUsername())){
-                baseResponseDTO.setStatus(HttpStatus.FORBIDDEN.value());
-                baseResponseDTO.setTimestamp(new Date());
-                baseResponseDTO.setMessage("Access Not Allowed!");
-                return new ResponseEntity<>(baseResponseDTO, HttpStatus.FORBIDDEN);
+            authService.validateManagerAccess(project, user.getUsername());
+
+            Stage stage = stageDb.findByStageId(stageId);
+            Integer order = stage.getOrder();
+
+            if (!stage.getTaskList().isEmpty()){
+                for (Task task: stage.getTaskList()){
+                    taskService.deleteTaskById(stageId, task.getTaskId());
+                }
             }
-
             stageDb.delete(stageDb.findByStageId(stageId));
+            stageDb.updateStageOrderAfterDelete(projectId, order);
 
-            baseResponseDTO.setStatus(HttpStatus.OK.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage("SUCCESS");
-            baseResponseDTO.setData(new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.OK);
-        }catch(Exception e){
-            baseResponseDTO.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            baseResponseDTO.setTimestamp(new Date());
-            baseResponseDTO.setMessage(String.format(e.getMessage()));
-            baseResponseDTO.setData(new CrudResponseDTO("FAILED", String.format(e.getMessage())));
-            return new ResponseEntity<>(baseResponseDTO, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+            return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
     }
 }

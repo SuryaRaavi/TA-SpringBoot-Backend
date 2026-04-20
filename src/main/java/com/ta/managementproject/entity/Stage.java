@@ -12,14 +12,17 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "stage")
+@Table(name = "stage",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"project_id", "stage_order"})
+        })
 @Entity
 @SQLDelete(sql = "UPDATE stage SET is_deleted = true WHERE stage_id = ?")
 @SQLRestriction("is_deleted IS false")
@@ -42,8 +45,7 @@ public class Stage {
 
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted;

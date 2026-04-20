@@ -1,16 +1,16 @@
 package com.ta.managementproject.restcontroller;
 
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.service.project.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -22,9 +22,7 @@ public class ProjectRestController {
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
     @GetMapping("")
     public ResponseEntity<?> getProjects(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "4") int size,
-
+            @PageableDefault(size = 10, page = 0) Pageable pageable,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate startDate,
@@ -33,13 +31,19 @@ public class ProjectRestController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate endDate,
 
-            @RequestParam(required = false) String search
+            @RequestParam(required = false) String status,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate createdAt,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate updatedAt,
+
+            @RequestParam(required = false) String keyword
     ){
-        if (search == null){
-            return projectService.getAllProject(page, size, startDate, endDate);
-        }else{
-            return projectService.searchProject(page, size, search);
-        }
+        return projectService.getAllProject(pageable, startDate, endDate, status, createdAt, updatedAt, keyword);
     }
 
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
@@ -72,36 +76,13 @@ public class ProjectRestController {
         return projectService.generateJoinCode(projectId);
     }
 
-    @PreAuthorize("hasRole('HSE')")
+    @PreAuthorize("hasRole('PROJECT_MEMBER')")
     @PostMapping("/join")
     public ResponseEntity<?> joinProject(@RequestParam String joinCode){
         return projectService.joinProject(joinCode);
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @GetMapping("/{projectId}/users")
-    public ResponseEntity<?> getUsersInProject(
-            @PathVariable("projectId") String projectId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "4") int size,
-            @RequestParam(required = false) Integer role,
-            @RequestParam(required = false) String searchQuery
-    ){
-        if (searchQuery != null){
-            return projectService.searchUserInProject(projectId, searchQuery, page, size);
-        }
-        return projectService.getUsersInProject(projectId, page, size, role);
-    }
-
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @DeleteMapping("/{projectId}/users/{username}")
-    public ResponseEntity<?> deleteProjectMemberFromProject(
-            @PathVariable("projectId") String projectId,
-            @PathVariable String username
-    ){
-        return projectService.deleteProjectMemberFromProject(projectId, username);
-    }
-
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
     @GetMapping("/{projectId}/statistics")
     public ResponseEntity<?> getStatistics(@PathVariable String projectId){
         return projectService.getProjectStatistics(projectId);

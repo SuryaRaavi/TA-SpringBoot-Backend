@@ -11,15 +11,18 @@ import org.hibernate.annotations.*;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
+
 import java.util.ArrayList;
 import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "task")
+@Table(name = "task",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"stage_id", "task_order"})
+})
 @Entity
 @SQLDelete(sql = "UPDATE task SET is_deleted = true WHERE task_id = ?")
 @SQLRestriction("is_deleted IS false")
@@ -48,7 +51,7 @@ public class Task {
     private String label;
 
     @Column(name = "due_date", nullable = false)
-    private LocalDate dueDate;
+    private Instant dueDate;
 
     @Column(name = "status", nullable = false)
     private String status;
@@ -61,13 +64,13 @@ public class Task {
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted;
 
-    @Column(name = "has_sub_task", nullable = false)
-    private boolean hasSubTask;
-
     @Column(name = "created_at")
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+
+    @Column(name = "updated_at")
+    @UpdateTimestamp
+    private Instant updatedAt;
 
     @ManyToOne
     @JoinColumn(name = "stage", nullable = false)

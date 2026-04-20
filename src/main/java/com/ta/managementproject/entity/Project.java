@@ -3,17 +3,14 @@ package com.ta.managementproject.entity;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.*;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,10 +39,10 @@ public class Project {
     private String status;
 
     @Column(name = "start_date")
-    private LocalDate startDate;
+    private Instant startDate;
 
     @Column(name = "end_date")
-    private LocalDate endDate;
+    private Instant endDate;
 
     @ManyToOne
     @JoinColumn(name = "project_manager", nullable = false)
@@ -61,8 +58,11 @@ public class Project {
 
     @Column(name = "created_at")
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+
+    @Column(name = "updated_at")
+    @UpdateTimestamp
+    private Instant updatedAt;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
@@ -72,9 +72,5 @@ public class Project {
     private String joinCode;
 
     @Column(name = "jc_expired_at")
-    private LocalDateTime joinCodeExpiredAt;
-
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    List<UserInProject> userInProjectList = new ArrayList<>();
+    private Instant joinCodeExpiredAt;
 }

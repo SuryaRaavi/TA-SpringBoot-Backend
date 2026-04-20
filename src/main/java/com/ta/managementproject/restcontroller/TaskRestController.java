@@ -1,16 +1,16 @@
 package com.ta.managementproject.restcontroller;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.service.task.TaskService;
 
@@ -25,24 +25,40 @@ public class TaskRestController{
     public ResponseEntity<?> getAllTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
-
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "4") int size,
+            @PageableDefault(size = 10, page = 0) Pageable pageable,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate startDate,
+            LocalDate dueDate,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate endDate,
+            LocalDate createdAt,
 
-            @RequestParam(required = false) String query
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate updatedAt,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            Integer priority,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            Integer order,
+
+            @RequestParam(required = false) String keyword
     ){
-        if (query != null && !query.isEmpty()) {
-            return taskService.searchTask(page, size, stageId, query);
-        }
-        return taskService.getAllTask(page, size, stageId, startDate, endDate);
+        return taskService.getAllTask(
+                pageable,
+                stageId,
+                dueDate,
+                createdAt,
+                updatedAt,
+                priority,
+                order,
+                keyword
+        );
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
@@ -81,18 +97,29 @@ public class TaskRestController{
     public ResponseEntity<?> reorderTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
-            @RequestBody List<ReorderRequestDTO> requestDTOs
+            @RequestBody ReorderRequestDTO requestDTO
     ){
-        return taskService.reorderTask(stageId, requestDTOs);
+        return taskService.reorderTask(stageId, requestDTO);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    @PatchMapping("/{taskId}")
+    @DeleteMapping("/{taskId}")
     public ResponseEntity<?> deleteTask(
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId
     ){
         return taskService.deleteTaskById(stageId, taskId);
+    }
+
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
+    @PatchMapping("/update-status")
+    public ResponseEntity<?> updateTaskStatus(
+            @PathVariable String projectId,
+            @PathVariable String stageId,
+            @PathVariable String taskId,
+            @RequestBody CreateUpdateTaskRequestDTO requestDTO
+    ){
+        return taskService.updateTaskStatus(taskId, requestDTO);
     }
 }

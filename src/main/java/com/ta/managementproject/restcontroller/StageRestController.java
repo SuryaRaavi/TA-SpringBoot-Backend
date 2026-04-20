@@ -1,15 +1,12 @@
 package com.ta.managementproject.restcontroller;
 
 import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
-import com.ta.managementproject.dto.request.DeleteRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.service.stage.StageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/stages")
@@ -37,8 +34,8 @@ public class StageRestController {
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
     @PatchMapping("/reorder")
-    public ResponseEntity<?> reorderStage(@PathVariable String projectId, @RequestBody List<ReorderRequestDTO> requestDTOs){
-        return stageService.reorderStage(projectId, requestDTOs);
+    public ResponseEntity<?> reorderStage(@PathVariable String projectId, @RequestBody ReorderRequestDTO requestDTO){
+        return stageService.reorderStage(projectId, requestDTO);
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')")

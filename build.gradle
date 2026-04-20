@@ -76,6 +76,27 @@ dependencies {
 	// Mockito
 	testImplementation 'org.mockito:mockito-core:5.11.0'
 	testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+
+	//QueryDSL
+	implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
+	annotationProcessor 'com.querydsl:querydsl-apt:5.0.0:jakarta'
+	annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+	annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+}
+
+// Konfigurasi generated sources agar dikenali IDE
+sourceSets {
+	main {
+		java {
+			srcDirs = ['src/main/java', 'build/generated/sources/annotationProcessor/java/main']
+		}
+	}
+}
+
+// Pastikan compileJava menjalankan annotation processor
+compileJava {
+	options.annotationProcessorGeneratedSourcesDirectory =
+			file("${project.buildDir}/generated/sources/annotationProcessor/java/main")
 }
 
 tasks.named('test') {
