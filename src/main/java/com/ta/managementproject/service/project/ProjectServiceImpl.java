@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -83,10 +82,8 @@ public class ProjectServiceImpl implements ProjectService {
 
         Page<ProjectResponseDTO> projectList;
 
-        if (startDate != null && endDate != null){
-            if (endDate.isBefore(startDate)){
-                throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
-            }
+        if (startDate != null && endDate != null && endDate.isBefore(startDate)){
+            throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
         }
 
         projectList = userRole == Role.PROJECT_MANAGER ?
