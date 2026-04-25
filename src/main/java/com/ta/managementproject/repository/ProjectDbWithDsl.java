@@ -61,6 +61,8 @@ public class ProjectDbWithDsl {
                 case "updatedAt":
                     orders.add(new OrderSpecifier<>(direction, project.updatedAt));
                     break;
+
+                default: orders.add(new OrderSpecifier<>(direction, project.createdAt));
             }
         }
 
