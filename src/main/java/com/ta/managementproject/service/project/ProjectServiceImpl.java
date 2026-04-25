@@ -82,11 +82,8 @@ public class ProjectServiceImpl implements ProjectService {
 
         Page<ProjectResponseDTO> projectList;
 
-        if (startDate != null){
-            if (endDate != null){
-                if (endDate.isBefore(startDate))
-                    throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
-            }
+        if (startDate != null && endDate != null && endDate.isBefore(startDate)){
+            throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
         }
 
         projectList = userRole == Role.PROJECT_MANAGER ?
