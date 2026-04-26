@@ -350,4 +350,20 @@ public class AuthServiceTest {
         assertEquals("SUB_TASK_NOT_FOUND", exception.getMessage());
         verify(subTaskDb).findSubTaskBySubTaskId("INVALID-SUBTASK");
     }
+
+    @Test
+    void validateProjectCancellation_Success(){
+        assertDoesNotThrow(() ->
+                authService.validateProjectCancellation(mockProject));
+    }
+
+    @Test
+    void validateProjectCancellation_ThrowsConflictException(){
+        mockProject.setCancelled(true);
+
+        ForbiddenException exception = assertThrows(ForbiddenException.class,
+                () -> authService.validateProjectCancellation(mockProject));
+
+        assertEquals("Project has been cancelled!", exception.getMessage());
+    }
 }

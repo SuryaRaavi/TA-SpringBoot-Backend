@@ -3,6 +3,7 @@ package com.ta.managementproject.service.task;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import com.ta.managementproject.repository.SubTaskDbWithDsl;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
@@ -95,9 +96,11 @@ public class SubTaskServiceImpl implements SubTaskService{
     }
 
     @Override
+    @Transactional
     public ResponseEntity<?> addNewSubTask(String taskId, CreateUpdateSubTaskRequestDTO requestDTO) {
         Task task = authService.validateTask(taskId);
         authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromRequest());
+        authService.validateProjectCancellation(task.getStage().getProject());
 
         Integer currentTotal = subTaskDb.getTotalSubTask(taskId);
 
@@ -114,6 +117,8 @@ public class SubTaskServiceImpl implements SubTaskService{
                 .build();
 
         subTaskDb.save(newSubTask);
+        checkAndUpdateTask(task);
+
         return utilService.buildResponse(HttpStatus.CREATED, "Sub-task created successfully", new CrudResponseDTO(newSubTask.getSubTaskId(), "SUCCESS"));
     }
 
@@ -122,11 +127,11 @@ public class SubTaskServiceImpl implements SubTaskService{
         SubTask subTask = authService.validateSubTask(subTaskId);
 
         authService.validateManagerAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
 
         subTask.setSubTaskName(requestDTO.getSubTaskName() != null ? requestDTO.getSubTaskName() : subTask.getSubTaskName());
         subTask.setDescription(requestDTO.getDescription() != null ? requestDTO.getDescription() : subTask.getDescription());
         subTask.setDueDate(requestDTO.getDueDate() != null ? requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant() : subTask.getDueDate());
-        subTask.setStatus(requestDTO.getStatus() != null ? requestDTO.getStatus() : subTask.getStatus());
         subTask.setLabel(requestDTO.getLabel() != null ? requestDTO.getLabel() : subTask.getLabel());
         subTask.setProjectMember(requestDTO.getProjectMember() != null ? requestDTO.getProjectMember() : subTask.getProjectMember());
 
@@ -138,6 +143,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     public ResponseEntity<?> getDetailSubTask(String subTaskId) {
         SubTask subTask = authService.validateSubTask(subTaskId);
         authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
 
         SubTaskDetailResponseDTO detail = new SubTaskDetailResponseDTO(
                 subTask.getSubTaskId(),
@@ -156,10 +162,14 @@ public class SubTaskServiceImpl implements SubTaskService{
     public ResponseEntity<?> deleteSubTaskById(String taskId, String subTaskId) {
         SubTask subTask = authService.validateSubTask(subTaskId);
         authService.validateManagerAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
+
         Integer order = subTask.getOrder();
 
         subTaskDb.delete(subTask);
         subTaskDb.updateSubTaskOrderAfterDelete(taskId, order);
+        checkAndUpdateTask(subTask.getTask());
+
         return utilService.buildResponse(HttpStatus.CREATED, "Sub-task deleted successfully", new CrudResponseDTO(subTaskId, "DELETED"));
     }
 
@@ -170,6 +180,7 @@ public class SubTaskServiceImpl implements SubTaskService{
         SubTask subTask = authService.validateSubTask(requestDTO.getId());
 
         authService.validateManagerAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
 
         if (subTask.getOrder() > requestDTO.getOrder()){
             subTaskDb.updateSubTaskOrderAbove(taskId, requestDTO.getOrder() - 1, subTask.getOrder());
@@ -184,13 +195,41 @@ public class SubTaskServiceImpl implements SubTaskService{
     }
 
     @Override
+    @Transactional
     public ResponseEntity<?> updateSubTaskStatus(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) {
         SubTask subTask = authService.validateSubTask(subTaskId);
         authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
 
         subTask.setStatus(requestDTO.getStatus());
         subTaskDb.save(subTask);
+        checkAndUpdateTask(subTask.getTask());
 
         return utilService.buildResponse(HttpStatus.OK, "Task status updated successfully", new CrudResponseDTO(subTaskId, Instant.now().toString()));
+    }
+
+    private void checkAndUpdateTask(Task task){
+        List<SubTask> subTaskList = task.getSubTaskList();
+        String status = "";
+
+        long totalTodo = 0L;
+        long totalFinished = 0L;
+
+        for (SubTask subTask: subTaskList){
+            switch (subTask.getStatus()) {
+                case ("TODO") -> totalTodo++;
+                case ("FINISHED") -> totalFinished++;
+            }
+        }
+
+       if (subTaskList.size() == totalTodo){
+            status = "TODO";
+       }else if (subTaskList.size() == totalFinished){
+            status = "FINISHED";
+       }else{
+            status = "IN_PROGRESS";
+       }
+
+       taskDb.save(task.toBuilder().status(status).build());
     }
 }

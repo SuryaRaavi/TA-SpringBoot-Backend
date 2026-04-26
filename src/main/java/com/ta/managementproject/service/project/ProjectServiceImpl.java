@@ -1,11 +1,11 @@
 package com.ta.managementproject.service.project;
 
-import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
 import com.ta.managementproject.dto.response.*;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.enums.Role;
 import com.ta.managementproject.exception.BadRequestException;
+import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.exception.NotFoundException;
 import com.ta.managementproject.exception.UnprocessableContentException;
 import com.ta.managementproject.repository.*;
@@ -16,6 +16,7 @@ import com.ta.managementproject.service.stage.StageService;
 import com.ta.managementproject.service.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -74,7 +78,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(readOnly = true)
     public ResponseEntity<?> getAllProject(
-            Pageable pageable, LocalDate startDate, LocalDate endDate, String status, LocalDate createdAt, LocalDate updatedAt, String keyword
+            Pageable pageable, LocalDate startDate, LocalDate endDate, LocalDate createdAt, LocalDate updatedAt, String keyword
     ) {
         Role userRole = userService.getUserRoleByUsername(jwtUtils.getUserNameFromRequest(request));
 
@@ -87,10 +91,22 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         projectList = userRole == Role.PROJECT_MANAGER ?
-                projectDbWithDsl.findAll(username, null, startDate, endDate, status, createdAt, updatedAt, keyword, pageable) :
-                projectDbWithDsl.findAll(null, username, startDate, endDate, status, createdAt, updatedAt, keyword, pageable);
+                projectDbWithDsl.findAll(username, null, startDate, endDate, createdAt, updatedAt, keyword, pageable) :
+                projectDbWithDsl.findAll(null, username, startDate, endDate, createdAt, updatedAt, keyword, pageable);
 
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", projectList);
+        List<ProjectResponseDTO> projectListWithSummary = new ArrayList<>();
+
+        for (ProjectResponseDTO project: projectList.getContent()){
+            projectListWithSummary.add(assignProgressToProject(project, getProjectStatistics(project.getProjectId())));
+        }
+
+        Page<ProjectResponseDTO> newProjectList = new PageImpl<>(
+          projectListWithSummary,
+          projectList.getPageable(),
+          projectList.getTotalElements()
+        );
+
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", newProjectList);
     }
 
     @Override
@@ -106,7 +122,6 @@ public class ProjectServiceImpl implements ProjectService {
                         .projectName(requestDTO.getProjectName())
                         .description(requestDTO.getDescription())
                         .projectManager(pm)
-                        .status("NOT_STARTED")
                         .startDate(requestDTO.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                         .endDate(requestDTO.getEndDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                         .createdAt(Instant.now())
@@ -123,6 +138,9 @@ public class ProjectServiceImpl implements ProjectService {
             Project project = authService.validateProject(projectId);
 
             authService.validateManagerAccess(project, user.getUsername());
+            if (project.isCancelled()){
+                throw new ConflictException("Update project is not allowed, project status is cancelled!");
+            }
 
             if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())){
                 throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
@@ -134,7 +152,7 @@ public class ProjectServiceImpl implements ProjectService {
                             .description(requestDTO.getDescription() == null ? project.getDescription() : requestDTO.getDescription())
                             .startDate(requestDTO.getStartDate() == null ? project.getStartDate() : requestDTO.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                             .endDate(requestDTO.getEndDate() == null ? project.getEndDate() : requestDTO.getEndDate().atStartOfDay(ZoneOffset.UTC).toInstant())
-                            .status(requestDTO.getStatus() == null ? project.getStatus() : requestDTO.getStatus())
+                            .isCancelled(requestDTO.getIsCancelled() == null ? project.isCancelled() : requestDTO.getIsCancelled())
                             .build()
             );
 
@@ -149,7 +167,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         authService.validateManagerAndMemberAccess(project, user.getUsername());
 
-        ProjectDetailResponseDTO responseDTO = new ProjectDetailResponseDTO();
+        ProjectResponseDTO responseDTO = new ProjectResponseDTO();
 
         responseDTO.setProjectId(projectId);
         responseDTO.setProjectName(project.getProjectName());
@@ -157,7 +175,10 @@ public class ProjectServiceImpl implements ProjectService {
         responseDTO.setFullNamePm(project.getProjectManager().getFullName());
         responseDTO.setStartDate(project.getStartDate());
         responseDTO.setEndDate(project.getEndDate());
-        responseDTO.setStatus(project.getStatus());
+        responseDTO.setCreatedAt(project.getCreatedAt());
+        responseDTO.setUpdatedAt(project.getUpdatedAt());
+
+        responseDTO = assignProgressToProject(responseDTO, getProjectStatistics(projectId));
 
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO);
     }
@@ -172,9 +193,7 @@ public class ProjectServiceImpl implements ProjectService {
         authService.validateManagerAccess(project, user.getUsername());
 
         if (!project.getStageList().isEmpty()){
-            for (Stage stage: project.getStageList()){
-                stageService.deleteStageById(projectId, stage.getStageId());
-            }
+            project.getStageList().stream().forEach(stage -> stageService.deleteStageById(projectId, stage.getStageId()));
         }
 
         projectDb.delete(project);
@@ -189,6 +208,7 @@ public class ProjectServiceImpl implements ProjectService {
         Project project = authService.validateProject(projectId);
 
         authService.validateManagerAccess(project, username);
+        authService.validateProjectCancellation(project);
 
         if (
                 project.getJoinCode() == null ||
@@ -215,6 +235,8 @@ public class ProjectServiceImpl implements ProjectService {
             throw new NotFoundException("PROJECT_NOT_FOUND!");
         }
 
+        authService.validateProjectCancellation(project);
+
         if (project.getJoinCodeExpiredAt().isBefore(Instant.now())){
             throw new UnprocessableContentException("Join code has beed expired!");
         }
@@ -231,8 +253,7 @@ public class ProjectServiceImpl implements ProjectService {
         return utilService.buildResponse(HttpStatus.CREATED, "SUCCESS", new CrudResponseDTO("Project Code", project.getProjectId()));
     }
 
-    @Override
-    public ResponseEntity<?> getProjectStatistics(String projectId) {
+    private ProgressResponseDTO getProjectStatistics(String projectId) {
             User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
 
             Project project = authService.validateProject(projectId);
@@ -241,15 +262,11 @@ public class ProjectServiceImpl implements ProjectService {
 
             Long totalTask = 0L;
             Long totalFinishedTask = 0L;
-            Long totalToDoTask = 0L;
             Long totalInProgressTask = 0L;
+            Long totalToDoTask = 0L;
 
             for (Stage stage: project.getStageList()){
-                ResponseEntity<?> response = stageService.getStageStatistics(stage.getStageId());
-                BaseResponseDTO<ProgressResponseDTO> body =
-                        (BaseResponseDTO<ProgressResponseDTO>) response.getBody();
-
-                ProgressResponseDTO progressResponseDTO = body.getData();
+                ProgressResponseDTO progressResponseDTO = stageService.getStageStatistics(stage.getStageId());
 
                 totalTask += progressResponseDTO.getTotalTask();
                 totalFinishedTask += progressResponseDTO.getFinishedTask();
@@ -257,16 +274,35 @@ public class ProjectServiceImpl implements ProjectService {
                 totalToDoTask += progressResponseDTO.getTodoTask();
             }
 
-            return utilService.buildResponse(
-                    HttpStatus.OK,
-                    "SUCCESS",
-                    ProgressResponseDTO.builder()
+            return ProgressResponseDTO.builder()
                             .progress(totalTask == 0 ? 0.00 : (totalFinishedTask * 1.0 / totalTask * 100))
                             .finishedTask(totalFinishedTask)
                             .inProgressTask(totalInProgressTask)
                             .todoTask(totalToDoTask)
                             .totalTask(totalTask)
-                            .build());
+                            .build();
+    }
+
+    private ProjectResponseDTO assignProgressToProject(ProjectResponseDTO project, ProgressResponseDTO progress){
+        String status = "";
+
+        if (project.isCancelled()) {
+            status = "CANCELLED";
+        }else if (Objects.equals(progress.getTodoTask(), progress.getTotalTask())){
+            status = "NOT_STARTED";
+        }else if (Objects.equals(progress.getFinishedTask(), progress.getTotalTask())){
+            status = "COMPLETED";
+        }else{
+            status = "IN_PROGRESS";
+        }
+
+        return project.toBuilder()
+                .inProgressTask(progress.getInProgressTask())
+                .finishedTask(project.getFinishedTask())
+                .todoTask(progress.getTodoTask())
+                .status(status)
+                .progress(progress.getProgress())
+                .build();
     }
 
 }

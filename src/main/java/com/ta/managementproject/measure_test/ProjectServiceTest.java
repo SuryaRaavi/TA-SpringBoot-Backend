@@ -1,8 +1,8 @@
-package com.ta.managementproject;
+package com.ta.managementproject.measure_test;
 
-import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
-import com.ta.managementproject.dto.response.*;
+import com.ta.managementproject.dto.response.ProgressResponseDTO;
+import com.ta.managementproject.dto.response.ProjectResponseDTO;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.enums.Role;
 import com.ta.managementproject.exception.BadRequestException;

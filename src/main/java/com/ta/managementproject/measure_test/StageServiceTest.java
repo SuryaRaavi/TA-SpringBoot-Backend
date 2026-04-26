@@ -1,4 +1,4 @@
-package com.ta.managementproject.test;
+package com.ta.managementproject.measure_test;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
@@ -23,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,16 +48,16 @@ class StageServiceTest {
     @InjectMocks
     private StageServiceImpl stageService;
 
-    private static final String USERNAME     = "user_test";
-    private static final String PROJECT_ID   = "project-001";
-    private static final String STAGE_ID     = "stage-001";
+    private static final String USERNAME   = "user_test";
+    private static final String PROJECT_ID = "project-001";
+    private static final String STAGE_ID   = "stage-001";
 
-    private User        mockUserPm;
-    private User        mockUserMember;
-    private Project     mockProject;
-    private Stage       mockStage;
+    private User    mockUserPm;
+    private User    mockUserMember;
+    private Project mockProject;
+    private Stage   mockStage;
 
-    /* ── helper role builder ─────────────────────────────────────────────── */
+    /* ── helper ──────────────────────────────────────────────────────────── */
     private User buildUser(String roleName) {
         Role role =
                 Role.builder().name(roleName).build();
@@ -85,21 +84,29 @@ class StageServiceTest {
                 .build();
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * getAllStage
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // getAllStage — as PROJECT_MANAGER
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * getAllStage memanggil getStageStatistics (public) per item dalam list.
+     * Karena stageList yang dikembalikan oleh stageDbWithDsl kosong,
+     * getStageStatistics tidak akan dipanggil sehingga tidak perlu stub tambahan.
+     */
     @Test
     void getAllStage_asProjectManager_shouldCallFindAllWithPmUsername() {
         List<StageResponseDTO> mockList = List.of();
-        ResponseEntity<BaseResponseDTO<List<StageResponseDTO>>> mockResponse = ResponseEntity.ok().build();
+        ResponseEntity<BaseResponseDTO<List<StageResponseDTO>>> mockResponse =
+                ResponseEntity.ok().build();
 
         when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
-        when(stageDbWithDsl.findAll(eq(USERNAME), isNull(), eq(PROJECT_ID))).thenReturn(mockList);
-        when(utilService.buildResponse(HttpStatus.OK, "SUCCESS", mockList)).thenReturn(mockResponse);
+        when(stageDbWithDsl.findAll(eq(USERNAME), isNull(), eq(PROJECT_ID)))
+                .thenReturn(mockList);
+        when(utilService.buildResponse(HttpStatus.OK, "SUCCESS", mockList))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.getAllStage(PROJECT_ID);
 
@@ -107,17 +114,24 @@ class StageServiceTest {
         verify(stageDbWithDsl).findAll(eq(USERNAME), isNull(), eq(PROJECT_ID));
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // getAllStage — as PROJECT_MEMBER
+    // ════════════════════════════════════════════════════════════════════════
+
     @Test
     void getAllStage_asMember_shouldCallFindAllWithMemberUsername() {
         List<StageResponseDTO> mockList = List.of();
-        ResponseEntity<BaseResponseDTO<List<StageResponseDTO>>> mockResponse = ResponseEntity.ok().build();
+        ResponseEntity<BaseResponseDTO<List<StageResponseDTO>>> mockResponse =
+                ResponseEntity.ok().build();
 
         when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserMember);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
-        when(stageDbWithDsl.findAll(isNull(), eq(USERNAME), eq(PROJECT_ID))).thenReturn(mockList);
-        when(utilService.buildResponse(HttpStatus.OK, "SUCCESS", mockList)).thenReturn(mockResponse);
+        when(stageDbWithDsl.findAll(isNull(), eq(USERNAME), eq(PROJECT_ID)))
+                .thenReturn(mockList);
+        when(utilService.buildResponse(HttpStatus.OK, "SUCCESS", mockList))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.getAllStage(PROJECT_ID);
 
@@ -125,10 +139,13 @@ class StageServiceTest {
         verify(stageDbWithDsl).findAll(isNull(), eq(USERNAME), eq(PROJECT_ID));
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * addNewStage
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // addNewStage — sukses, order = total + 1
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Service memanggil validateProjectCancellation setelah validateManagerAccess.
+     */
     @Test
     void addNewStage_withValidRequest_shouldSaveStageAndReturnOk() {
         CreateUpdateStageRequestDTO requestDTO = new CreateUpdateStageRequestDTO();
@@ -140,14 +157,21 @@ class StageServiceTest {
         when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
         when(stageDbWithDsl.totalStageByProject(PROJECT_ID)).thenReturn(2L);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.addNewStage(PROJECT_ID, requestDTO);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(stageDb).save(any(Stage.class));
+        verify(authService).validateProjectCancellation(mockProject);
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // addNewStage — order ditetapkan sebagai total + 1
+    // ════════════════════════════════════════════════════════════════════════
 
     @Test
     void addNewStage_shouldSetOrderAsNextAfterTotal() {
@@ -158,19 +182,25 @@ class StageServiceTest {
         when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
         when(stageDbWithDsl.totalStageByProject(PROJECT_ID)).thenReturn(3L);
         when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
                 .thenReturn(ResponseEntity.ok().build());
 
         stageService.addNewStage(PROJECT_ID, requestDTO);
 
+        // total = 3 → order harus 4
         verify(stageDb).save(argThat(s -> s.getOrder() == 4));
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * editStage
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // editStage — sukses
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Service memanggil validateProjectCancellation(stage.getProject()) setelah
+     * validateManagerAccess.
+     */
     @Test
     void editStage_withValidRequest_shouldSaveUpdatedStageAndReturnOk() {
         CreateUpdateStageRequestDTO requestDTO = new CreateUpdateStageRequestDTO();
@@ -183,13 +213,20 @@ class StageServiceTest {
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.editStage(STAGE_ID, requestDTO);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(stageDb).save(any(Stage.class));
+        verify(authService).validateProjectCancellation(mockProject);
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // editStage — field null → tetap nilai lama
+    // ════════════════════════════════════════════════════════════════════════
 
     @Test
     void editStage_withNullFields_shouldKeepOriginalValues() {
@@ -201,6 +238,7 @@ class StageServiceTest {
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateStage(STAGE_ID)).thenReturn(mockStage);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
         when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
                 .thenReturn(ResponseEntity.ok().build());
 
@@ -212,41 +250,46 @@ class StageServiceTest {
         ));
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * getStageStatistics — no tasks
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // getStageStatistics — tanpa task → progress nol, subTaskDb tidak dipanggil
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * getStageStatistics adalah public dan mengembalikan ProgressResponseDTO langsung,
+     * bukan ResponseEntity. Verifikasi dilakukan terhadap nilai DTO yang dikembalikan.
+     */
     @Test
     void getStageStatistics_withNoTasks_shouldReturnZeroProgress() {
         Stage stageNoTasks = mockStage.toBuilder().taskList(List.of()).build();
-        ProgressResponseDTO mockProgress = ProgressResponseDTO.builder()
-                .totalTask(0L).finishedTask(0L).todoTask(0L).inProgressTask(0L).progress(0.00).build();
-
-        ResponseEntity<BaseResponseDTO<Object>> mockResponse =
-                ResponseEntity.ok(new BaseResponseDTO<>(200, "SUCCESS", new Date(), mockProgress));
 
         when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
         when(authService.validateStage(STAGE_ID)).thenReturn(stageNoTasks);
         doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
 
-        ResponseEntity<BaseResponseDTO<ProgressResponseDTO>> result =
-                stageService.getStageStatistics(STAGE_ID);
+        ProgressResponseDTO result = stageService.getStageStatistics(STAGE_ID);
 
-        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getTotalTask()).isZero();
+        assertThat(result.getFinishedTask()).isZero();
+        assertThat(result.getTodoTask()).isZero();
+        assertThat(result.getInProgressTask()).isZero();
+        assertThat(result.getProgress()).isEqualTo(0.00);
         verify(subTaskDb, never()).getSubTaskSummary(any());
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * getStageStatistics — task with subtasks (use subtask summary)
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // getStageStatistics — task tanpa subtask → delegasi ke subTaskDb
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Logika service: jika subTaskList KOSONG → panggil subTaskDb.getSubTaskSummary.
+     * (kebalikan dari nama test lama yang menyesatkan)
+     */
     @Test
-    void getStageStatistics_withTaskHavingNoSubTasks_shouldUseSubTaskSummary() {
+    void getStageStatistics_whenTaskHasNoSubTasks_shouldDelegateToSubTaskDb() {
         Task taskNoSub = Task.builder()
                 .taskId("task-001")
                 .status("TODO")
-                .subTaskList(List.of())
+                .subTaskList(List.of())   // kosong → masuk blok subTaskDb
                 .build();
 
         Stage stageWithTask = mockStage.toBuilder().taskList(List.of(taskNoSub)).build();
@@ -258,25 +301,34 @@ class StageServiceTest {
         when(authService.validateStage(STAGE_ID)).thenReturn(stageWithTask);
         doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
         when(subTaskDb.getSubTaskSummary("task-001")).thenReturn(subSummary);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-                .thenReturn(ResponseEntity.ok().build());
 
-        stageService.getStageStatistics(STAGE_ID);
+        ProgressResponseDTO result = stageService.getStageStatistics(STAGE_ID);
 
         verify(subTaskDb).getSubTaskSummary("task-001");
+        assertThat(result.getTotalTask()).isEqualTo(3L);
+        assertThat(result.getFinishedTask()).isEqualTo(1L);
+        assertThat(result.getTodoTask()).isEqualTo(1L);
+        assertThat(result.getInProgressTask()).isEqualTo(1L);
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * getStageStatistics — task with subtasks (count by task status)
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // getStageStatistics — task dengan subtask → hitung dari status task
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Logika service: jika subTaskList TIDAK KOSONG → hitung langsung dari status task,
+     * subTaskDb tidak dipanggil.
+     */
     @Test
-    void getStageStatistics_withTaskHavingSubTasks_shouldCountByTaskStatus() {
+    void getStageStatistics_whenTaskHasSubTasks_shouldCountByTaskStatus() {
         SubTask dummySub = SubTask.builder().subTaskId("sub-001").build();
 
-        Task taskTodo       = Task.builder().taskId("t1").status("TODO").subTaskList(List.of(dummySub)).build();
-        Task taskInProgress = Task.builder().taskId("t2").status("IN_PROGRESS").subTaskList(List.of(dummySub)).build();
-        Task taskDone       = Task.builder().taskId("t3").status("DONE").subTaskList(List.of(dummySub)).build();
+        Task taskTodo       = Task.builder().taskId("t1").status("TODO")
+                .subTaskList(List.of(dummySub)).build();
+        Task taskInProgress = Task.builder().taskId("t2").status("IN_PROGRESS")
+                .subTaskList(List.of(dummySub)).build();
+        Task taskDone       = Task.builder().taskId("t3").status("DONE")
+                .subTaskList(List.of(dummySub)).build();
 
         Stage stageWithTasks = mockStage.toBuilder()
                 .taskList(List.of(taskTodo, taskInProgress, taskDone))
@@ -285,23 +337,27 @@ class StageServiceTest {
         when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
         when(authService.validateStage(STAGE_ID)).thenReturn(stageWithTasks);
         doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), argThat(dto -> {
-            ProgressResponseDTO p = (ProgressResponseDTO) dto;
-            return p.getTotalTask() == 3L &&
-                    p.getTodoTask() == 1L &&
-                    p.getInProgressTask() == 1L &&
-                    p.getFinishedTask() == 1L;
-        }))).thenReturn(ResponseEntity.ok().build());
 
-        stageService.getStageStatistics(STAGE_ID);
+        ProgressResponseDTO result = stageService.getStageStatistics(STAGE_ID);
 
+        // subTaskDb tidak boleh dipanggil karena semua task punya subtask
         verify(subTaskDb, never()).getSubTaskSummary(any());
+
+        assertThat(result.getTotalTask()).isEqualTo(3L);
+        assertThat(result.getTodoTask()).isEqualTo(1L);
+        assertThat(result.getInProgressTask()).isEqualTo(1L);
+        assertThat(result.getFinishedTask()).isEqualTo(1L);
+        assertThat(result.getProgress()).isEqualTo(1.0 / 3.0 * 100);
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * reorderStage — move up (new order < current order)
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // reorderStage — pindah ke atas (newOrder < currentOrder)
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Service: updateStageOrderAbove(projectId, newOrder - 1, currentOrder).
+     * Dengan newOrder = 1 dan currentOrder = 3 → updateStageOrderAbove(id, 0, 3).
+     */
     @Test
     void reorderStage_whenMovingUp_shouldCallUpdateStageOrderAbove() {
         ReorderRequestDTO requestDTO = new ReorderRequestDTO();
@@ -315,8 +371,10 @@ class StageServiceTest {
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
         when(stageDb.findByStageId(STAGE_ID)).thenReturn(stageOrder3);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.reorderStage(PROJECT_ID, requestDTO);
 
@@ -325,10 +383,14 @@ class StageServiceTest {
         verify(stageDb).save(stageOrder3);
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * reorderStage — move down (new order > current order)
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // reorderStage — pindah ke bawah (newOrder > currentOrder)
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Service: updateStageOrderBelow(projectId, newOrder, currentOrder + 1).
+     * Dengan newOrder = 4 dan currentOrder = 2 → updateStageOrderBelow(id, 4, 3).
+     */
     @Test
     void reorderStage_whenMovingDown_shouldCallUpdateStageOrderBelow() {
         ReorderRequestDTO requestDTO = new ReorderRequestDTO();
@@ -342,8 +404,10 @@ class StageServiceTest {
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
         when(stageDb.findByStageId(STAGE_ID)).thenReturn(stageOrder2);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.reorderStage(PROJECT_ID, requestDTO);
 
@@ -352,20 +416,21 @@ class StageServiceTest {
         verify(stageDb).save(stageOrder2);
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * reorderStage — same order (no-op on ordering)
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // reorderStage — order sama → tidak ada perubahan urutan
+    // ════════════════════════════════════════════════════════════════════════
 
     @Test
     void reorderStage_whenSameOrder_shouldNotCallUpdateMethods() {
         ReorderRequestDTO requestDTO = new ReorderRequestDTO();
         requestDTO.setId(STAGE_ID);
-        requestDTO.setOrder(1); // same as mockStage.order
+        requestDTO.setOrder(1); // sama dengan mockStage.order
 
         when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
         when(stageDb.findByStageId(STAGE_ID)).thenReturn(mockStage);
         when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
                 .thenReturn(ResponseEntity.ok().build());
@@ -377,10 +442,15 @@ class StageServiceTest {
         verify(stageDb).save(mockStage);
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * deleteStageById — stage with no tasks
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // deleteStageById — tanpa task
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Service memanggil validateProjectCancellation sebelum menghapus.
+     * Urutan di service: validateManagerAccess → validateProjectCancellation →
+     * findByStageId → delete → updateStageOrderAfterDelete.
+     */
     @Test
     void deleteStageById_withNoTasks_shouldDeleteDirectlyAndUpdateOrder() {
         ResponseEntity<BaseResponseDTO<Object>> mockResponse = ResponseEntity.ok().build();
@@ -389,8 +459,11 @@ class StageServiceTest {
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
+        // Dipanggil dua kali: sekali untuk ambil order, sekali di dalam stageDb.delete(stageDb.findByStageId(...))
         when(stageDb.findByStageId(STAGE_ID)).thenReturn(mockStage);
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.deleteStageById(PROJECT_ID, STAGE_ID);
 
@@ -398,12 +471,19 @@ class StageServiceTest {
         verify(taskService, never()).deleteTaskById(any(), any());
         verify(stageDb).delete(mockStage);
         verify(stageDb).updateStageOrderAfterDelete(PROJECT_ID, 1);
+        verify(authService).validateProjectCancellation(mockProject);
     }
 
-    /* ══════════════════════════════════════════════════════════════════════
-     * deleteStageById — stage with tasks (cascade delete)
-     * ══════════════════════════════════════════════════════════════════════ */
+    // ════════════════════════════════════════════════════════════════════════
+    // deleteStageById — dengan task (cascade delete)
+    // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Service mengambil stage dua kali via stageDb.findByStageId:
+     *  1. untuk mendapatkan order dan iterasi taskList
+     *  2. sebagai argumen stageDb.delete(stageDb.findByStageId(stageId))
+     * Keduanya perlu di-stub agar tidak melempar NullPointerException.
+     */
     @Test
     void deleteStageById_withTasks_shouldDeleteEachTaskThenStage() {
         Task mockTask = Task.builder().taskId("task-001").build();
@@ -415,13 +495,13 @@ class StageServiceTest {
         when(userDb.findByUsername(USERNAME)).thenReturn(mockUserPm);
         when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
+        doNothing().when(authService).validateProjectCancellation(mockProject);
         when(stageDb.findByStageId(STAGE_ID))
-                .thenReturn(stageWithTasks)  // first call: get stage + order
-                .thenReturn(stageWithTasks); // second call: inside stageDb.delete(stageDb.findByStageId(...))
-        doReturn(mockResponse)
-                .when(taskService)
-                .deleteTaskById(STAGE_ID, "task-001");
-        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any())).thenReturn(mockResponse);
+                .thenReturn(stageWithTasks)   // panggilan pertama: ambil stage + order
+                .thenReturn(stageWithTasks);  // panggilan kedua: argumen stageDb.delete(...)
+        doReturn(mockResponse).when(taskService).deleteTaskById(STAGE_ID, "task-001");
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
+                .thenReturn(mockResponse);
 
         ResponseEntity<?> result = stageService.deleteStageById(PROJECT_ID, STAGE_ID);
 

@@ -1,6 +1,5 @@
 package com.ta.managementproject.service.stage;
 
-import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
@@ -24,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -81,12 +81,18 @@ public class StageServiceImpl implements StageService{
 
         String username = jwtUtils.getUserNameFromRequest(request);
 
-        List<StageResponseDTO> responses =
+        List<StageResponseDTO> stageList =
                 Role.valueOf(user.getRole().getName()) == Role.PROJECT_MANAGER ?
                 stageDbWithDsl.findAll(username, null, projectId) :
                 stageDbWithDsl.findAll(null, username, projectId);
 
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responses);
+        List<StageResponseDTO> stageListWithSummary = new ArrayList<>();
+
+        for (StageResponseDTO stage: stageList){
+            stageListWithSummary.add(assignProgressToStage(stage, getStageStatistics(stage.getStageId())));
+        }
+
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", stageListWithSummary);
     }
 
     @Override
@@ -96,6 +102,7 @@ public class StageServiceImpl implements StageService{
         Project project = authService.validateProject(projectId);
 
         authService.validateManagerAccess(project, username);
+        authService.validateProjectCancellation(project);
 
         Stage newStage = Stage.builder()
                 .stageName(requestDTO.getStageName())
@@ -117,6 +124,7 @@ public class StageServiceImpl implements StageService{
         Stage stage = authService.validateStage(stageId);
 
         authService.validateManagerAccess(stage.getProject(), user.getUsername());
+        authService.validateProjectCancellation(stage.getProject());
 
         stageDb.save(
                 stage.toBuilder()
@@ -128,9 +136,53 @@ public class StageServiceImpl implements StageService{
         return utilService.buildResponse(HttpStatus.OK,"SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
         }
 
+    @Override
+    @Transactional
+    public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) {
+        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+        Project project = authService.validateProject(projectId);
+
+        authService.validateManagerAccess(project, user.getUsername());
+        authService.validateProjectCancellation(project);
+
+        Stage stage = stageDb.findByStageId(requestDTO.getId());
+
+        if (stage.getOrder() > requestDTO.getOrder()){
+            stageDb.updateStageOrderAbove(projectId, requestDTO.getOrder() - 1, stage.getOrder());
+        }else if (stage.getOrder() < requestDTO.getOrder()){
+            stageDb.updateStageOrderBelow(projectId, requestDTO.getOrder(), stage.getOrder() + 1);
+        }
+
+        stage.setOrder(requestDTO.getOrder());
+        stageDb.save(stage);
+
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
+    }
 
     @Override
-    public ResponseEntity<BaseResponseDTO<ProgressResponseDTO>> getStageStatistics(String stageId) {
+    @Transactional
+    public ResponseEntity<?> deleteStageById(String projectId, String stageId) {
+            User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+            Project project = authService.validateProject(projectId);
+
+            authService.validateManagerAccess(project, user.getUsername());
+            authService.validateProjectCancellation(project);
+
+            Stage stage = stageDb.findByStageId(stageId);
+            Integer order = stage.getOrder();
+
+            if (!stage.getTaskList().isEmpty()){
+                for (Task task: stage.getTaskList()){
+                    taskService.deleteTaskById(stageId, task.getTaskId());
+                }
+            }
+            stageDb.delete(stageDb.findByStageId(stageId));
+            stageDb.updateStageOrderAfterDelete(projectId, order);
+
+            return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
+    }
+
+    public ProgressResponseDTO getStageStatistics(String stageId) {
         String username = jwtUtils.getUserNameFromRequest(request);
         Stage stage = authService.validateStage(stageId);
 
@@ -162,6 +214,7 @@ public class StageServiceImpl implements StageService{
                 totalTask++;
             }
         }
+
         responseDTO.setTotalTask(totalTask);
         responseDTO.setFinishedTask(totalFinishedTask);
         responseDTO.setTodoTask(totalTodoTask);
@@ -169,50 +222,16 @@ public class StageServiceImpl implements StageService{
 
         responseDTO.setProgress(totalTask == 0 ? 0.00 : (totalFinishedTask * 1.0 / totalTask * 100));
 
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO);
+        return responseDTO;
     }
 
-    @Override
-    @Transactional
-    public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) {
-        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
-        Project project = authService.validateProject(projectId);
-
-        authService.validateManagerAccess(project, user.getUsername());
-
-        Stage stage = stageDb.findByStageId(requestDTO.getId());
-
-        if (stage.getOrder() > requestDTO.getOrder()){
-            stageDb.updateStageOrderAbove(projectId, requestDTO.getOrder() - 1, stage.getOrder());
-        }else if (stage.getOrder() < requestDTO.getOrder()){
-            stageDb.updateStageOrderBelow(projectId, requestDTO.getOrder(), stage.getOrder() + 1);
-        }
-
-        stage.setOrder(requestDTO.getOrder());
-        stageDb.save(stage);
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
-    }
-
-    @Override
-    @Transactional
-    public ResponseEntity<?> deleteStageById(String projectId, String stageId) {
-            User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
-            Project project = authService.validateProject(projectId);
-
-            authService.validateManagerAccess(project, user.getUsername());
-
-            Stage stage = stageDb.findByStageId(stageId);
-            Integer order = stage.getOrder();
-
-            if (!stage.getTaskList().isEmpty()){
-                for (Task task: stage.getTaskList()){
-                    taskService.deleteTaskById(stageId, task.getTaskId());
-                }
-            }
-            stageDb.delete(stageDb.findByStageId(stageId));
-            stageDb.updateStageOrderAfterDelete(projectId, order);
-
-            return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
+    private StageResponseDTO assignProgressToStage(StageResponseDTO stage, ProgressResponseDTO progress){
+        return stage.toBuilder()
+                .progress(progress.getProgress())
+                .finishedTask(progress.getFinishedTask())
+                .todoTask(progress.getTodoTask())
+                .inProgressTask(progress.getInProgressTask())
+                .totalTask(progress.getTotalTask())
+                .build();
     }
 }

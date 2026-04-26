@@ -21,4 +21,6 @@ public interface AuthService {
     Task validateTask(String taskId);
 
     SubTask validateSubTask(String subTaskId);
+
+    void validateProjectCancellation(Project project);
 }

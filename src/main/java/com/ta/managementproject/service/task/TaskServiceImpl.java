@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 
+import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.repository.*;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
@@ -113,6 +114,7 @@ public class TaskServiceImpl implements TaskService {
     public ResponseEntity<?> addNewTask(String stageId, CreateUpdateTaskRequestDTO requestDTO) {
             Stage stage = authService.validateStage(stageId);
             authService.validateManagerAccess(stage.getProject(), getUsernameFromToken());
+            authService.validateProjectCancellation(stage.getProject());
 
             Integer currentTotal = taskDb.getTotalTask(stageId);
 
@@ -138,6 +140,7 @@ public class TaskServiceImpl implements TaskService {
         Task task = authService.validateTask(taskId);
 
         authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromToken());
+        authService.validateProjectCancellation(task.getStage().getProject());
 
         task.setTaskName(requestDTO.getTaskName());
         task.setDescription(requestDTO.getDescription());
@@ -178,6 +181,8 @@ public class TaskServiceImpl implements TaskService {
     public ResponseEntity<?> deleteTaskById(String stageId, String taskId) {
             Task task = authService.validateTask(taskId);
             authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromToken());
+            authService.validateProjectCancellation(task.getStage().getProject());
+
             Integer order = task.getOrder();
 
             if (!task.getSubTaskList().isEmpty()){
@@ -194,7 +199,9 @@ public class TaskServiceImpl implements TaskService {
     public ResponseEntity<?> reorderTask(String stageId, ReorderRequestDTO requestDTO) {
         authService.validateStage(stageId);
         Task task = authService.validateTask(requestDTO.getId());
+
         authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromToken());
+        authService.validateProjectCancellation(task.getStage().getProject());
 
         if (task.getOrder() > requestDTO.getOrder()){
             taskDb.updateTaskOrderAbove(stageId, requestDTO.getOrder() - 1, task.getOrder());
@@ -212,6 +219,11 @@ public class TaskServiceImpl implements TaskService {
     public ResponseEntity<?> updateTaskStatus(String taskId, CreateUpdateTaskRequestDTO requestDTO) {
         Task task = authService.validateTask(taskId);
         authService.validateManagerAndMemberAccess(task.getStage().getProject(), getUsernameFromToken());
+        authService.validateProjectCancellation(task.getStage().getProject());
+
+        if (!task.getSubTaskList().isEmpty()){
+            throw new ConflictException("Status is automatically set based on sub task");
+        }
 
         task.setStatus(requestDTO.getStatus());
         taskDb.save(task);

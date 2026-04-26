@@ -21,5 +21,5 @@ public class CreateUpdateProjectRequestDTO {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate endDate;
 
-    private String status;
+    private Boolean isCancelled;
 }

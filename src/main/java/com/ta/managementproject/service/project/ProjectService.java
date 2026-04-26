@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 public interface ProjectService {
-    ResponseEntity<?> getAllProject(Pageable pageable, LocalDate startDate, LocalDate endDate, String status, LocalDate createdAt, LocalDate updatedAt, String keyword);
+    ResponseEntity<?> getAllProject(Pageable pageable, LocalDate startDate, LocalDate endDate, LocalDate createdAt, LocalDate updatedAt, String keyword);
     ResponseEntity<?> addNewProject(CreateUpdateProjectRequestDTO request);
     ResponseEntity<?> updateProject(String projectId, CreateUpdateProjectRequestDTO request);
     ResponseEntity<?> getProjectDetail(String projectId);
@@ -17,6 +17,4 @@ public interface ProjectService {
     ResponseEntity<?> generateJoinCode(String kodeProyek);
 
     ResponseEntity<?> joinProject(String joinCode);
-
-    ResponseEntity<?> getProjectStatistics(String projectId);
 }

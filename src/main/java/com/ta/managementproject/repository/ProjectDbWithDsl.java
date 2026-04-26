@@ -4,9 +4,13 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ta.managementproject.dto.response.ProjectResponseDTO;
 import com.ta.managementproject.entity.QProject;
+import com.ta.managementproject.entity.QStage;
+import com.ta.managementproject.entity.QSubTask;
+import com.ta.managementproject.entity.QTask;
 import com.ta.managementproject.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +30,9 @@ import java.util.List;
 public class ProjectDbWithDsl {
     private final JPAQueryFactory queryFactory;
     private final QProject project = QProject.project;
+    private final QStage stage = QStage.stage;
+    private final QTask task = QTask.task;
+    private final QSubTask subTask = QSubTask.subTask;
 
     private static List<String> SORTING_COLUMNS = List.of("projectName", "startDate", "endDate", "createdAt", "updatedAt");
 
@@ -61,8 +68,6 @@ public class ProjectDbWithDsl {
                 case "updatedAt":
                     orders.add(new OrderSpecifier<>(direction, project.updatedAt));
                     break;
-
-                default: orders.add(new OrderSpecifier<>(direction, project.createdAt));
             }
         }
 
@@ -79,7 +84,6 @@ public class ProjectDbWithDsl {
             String memberUsername,
             LocalDate startDate,
             LocalDate endDate,
-            String status,
             LocalDate createdAt,
             LocalDate updatedAt,
             String keyword
@@ -100,10 +104,6 @@ public class ProjectDbWithDsl {
         if (endDate != null){
             Instant instant = endDate.atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
             builder.and(project.startDate.loe(instant));
-        }
-
-        if (status != null){
-            builder.and(project.status.eq(status.toUpperCase()));
         }
 
         if (createdAt != null){
@@ -131,23 +131,32 @@ public class ProjectDbWithDsl {
             String memberUsername,
             LocalDate startDate,
             LocalDate endDate,
-            String status,
             LocalDate createdAt,
             LocalDate updatedAt,
             String keyword,
             Pageable pageable
     ){
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
-        BooleanBuilder predicate = buildDynamicFilter(pmUsername, memberUsername, startDate, endDate, status, createdAt, updatedAt, keyword);
+        BooleanBuilder predicate = buildDynamicFilter(pmUsername, memberUsername, startDate, endDate, createdAt, updatedAt, keyword);
 
         List<ProjectResponseDTO> results = queryFactory
                 .select(Projections.constructor(
                         ProjectResponseDTO.class,
                         project.projectId,
                         project.projectName,
-                        project.status,
+                        project.description,
+                        project.projectManager.fullName,
+                        project.startDate,
+                        project.endDate,
                         project.createdAt,
-                        project.updatedAt
+                        project.updatedAt,
+                        Expressions.nullExpression(String.class),
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Double.class),
+                        project.isCancelled
                 ))
                 .from(project)
                 .where(predicate)

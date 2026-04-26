@@ -31,8 +31,6 @@ public class ProjectRestController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate endDate,
 
-            @RequestParam(required = false) String status,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate createdAt,
@@ -43,7 +41,7 @@ public class ProjectRestController {
 
             @RequestParam(required = false) String keyword
     ){
-        return projectService.getAllProject(pageable, startDate, endDate, status, createdAt, updatedAt, keyword);
+        return projectService.getAllProject(pageable, startDate, endDate, createdAt, updatedAt, keyword);
     }
 
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
@@ -80,11 +78,5 @@ public class ProjectRestController {
     @PostMapping("/join")
     public ResponseEntity<?> joinProject(@RequestParam String joinCode){
         return projectService.joinProject(joinCode);
-    }
-
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
-    @GetMapping("/{projectId}/statistics")
-    public ResponseEntity<?> getStatistics(@PathVariable String projectId){
-        return projectService.getProjectStatistics(projectId);
     }
 }

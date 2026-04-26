@@ -43,11 +43,5 @@ public class StageRestController {
     public ResponseEntity<?> deleteStage(@PathVariable String projectId, @PathVariable String stageId){
         return stageService.deleteStageById(projectId, stageId);
     }
-
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
-    @GetMapping("/{stageId}/statistics")
-    public ResponseEntity<?> getStatistics(@PathVariable String stageId){
-        return stageService.getStageStatistics(stageId);
-    }
 }
 

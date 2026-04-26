@@ -1,4 +1,4 @@
-package com.ta.managementproject.test;
+package com.ta.managementproject.measure_test;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.RegisterRequestDTO;

@@ -1,4 +1,4 @@
-package com.ta.managementproject.test;
+package com.ta.managementproject.measure_test;
 
 import com.querydsl.core.types.EntityPath;
 import com.querydsl.core.types.Expression;
@@ -6,9 +6,9 @@ import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.ta.managementproject.dto.response.SubTaskResponseDTO;
+import com.ta.managementproject.dto.response.TaskResponseDTO;
 import com.ta.managementproject.exception.BadRequestException;
-import com.ta.managementproject.repository.SubTaskDbWithDsl;
+import com.ta.managementproject.repository.TaskDbWithDsl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,32 +32,33 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class SubTaskDbWithDslTest {
+class TaskDbWithDslTest {
 
     @Mock
     private JPAQueryFactory queryFactory;
 
     @InjectMocks
-    private SubTaskDbWithDsl subTaskDbWithDsl;
+    private TaskDbWithDsl taskDbWithDsl;
 
     @Mock
-    private JPAQuery<SubTaskResponseDTO> selectQuery;
+    private JPAQuery<TaskResponseDTO> selectQuery;
 
     @Mock
     private JPAQuery<Long> countQuery;
 
-    private SubTaskResponseDTO sampleDto;
-    private static final String TASK_ID = "task-001";
+    private TaskResponseDTO sampleDto;
+    private static final String STAGE_ID = "stage-001";
 
     @BeforeEach
     void setUp() {
-        sampleDto = new SubTaskResponseDTO(
+        sampleDto = new TaskResponseDTO(
                 UUID.randomUUID().toString(),
-                "SubTask Alpha",
+                "Task Alpha",
+                1,
                 Instant.now(),
                 "TODO",
-                "bug",
                 "John Doe",
+                "bug",
                 Instant.now(),
                 Instant.now(),
                 1
@@ -67,7 +68,7 @@ class SubTaskDbWithDslTest {
     // ─── Helper: stub both select (data) and count chains ───────────────────────
 
     @SuppressWarnings("unchecked")
-    private void stubFullChain(List<SubTaskResponseDTO> results, Long total) {
+    private void stubFullChain(List<TaskResponseDTO> results, Long total) {
         when(queryFactory.select(any(Expression.class)))
                 .thenReturn((JPAQuery) selectQuery)
                 .thenReturn((JPAQuery) countQuery);
@@ -87,22 +88,22 @@ class SubTaskDbWithDslTest {
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — only required filter (taskId)
+    // findAll — only required filter (stageId)
     // ════════════════════════════════════════════════════════════════════════════
 
     @Test
-    void findAll_withOnlyTaskId_shouldReturnPageWithResults() {
+    void findAll_withOnlyStageId_shouldReturnPageWithResults() {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result).isNotNull();
         assertThat(result.getTotalElements()).isEqualTo(1L);
         assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0).getSubTaskName()).isEqualTo("SubTask Alpha");
+        assertThat(result.getContent().get(0).getTaskName()).isEqualTo("Task Alpha");
     }
 
     // ════════════════════════════════════════════════════════════════════════════
@@ -114,8 +115,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(), 0L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result.getContent()).isEmpty();
@@ -131,8 +132,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(), null);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result.getTotalElements()).isZero();
@@ -148,11 +149,12 @@ class SubTaskDbWithDslTest {
         LocalDate today = LocalDate.now();
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID,
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID,
                 today,
                 today.minusDays(7),
                 today,
+                1,
                 1,
                 "Alpha",
                 pageable
@@ -171,40 +173,24 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, LocalDate.now(), null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, LocalDate.now(), null, null, null, null, null, pageable
         );
 
         assertThat(result.getContent()).hasSize(1);
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — filter with createdAt only
+    // findAll — filter with priority only
     // ════════════════════════════════════════════════════════════════════════════
 
     @Test
-    void findAll_withCreatedAtFilter_shouldReturnResults() {
+    void findAll_withPriorityFilter_shouldReturnResults() {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, LocalDate.now(), null, null, null, pageable
-        );
-
-        assertThat(result.getContent()).hasSize(1);
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // findAll — filter with updatedAt only
-    // ════════════════════════════════════════════════════════════════════════════
-
-    @Test
-    void findAll_withUpdatedAtFilter_shouldReturnResults() {
-        Pageable pageable = PageRequest.of(0, 10);
-        stubFullChain(List.of(sampleDto), 1L);
-
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, LocalDate.now(), null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, 1, null, null, pageable
         );
 
         assertThat(result.getContent()).hasSize(1);
@@ -219,8 +205,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, 1, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, 1, null, pageable
         );
 
         assertThat(result.getContent()).hasSize(1);
@@ -235,24 +221,24 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, "Alpha", pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, "Alpha", pageable
         );
 
         assertThat(result.getContent()).hasSize(1);
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — sorting by subTaskName ASC
+    // findAll — sorting by taskName ASC
     // ════════════════════════════════════════════════════════════════════════════
 
     @Test
-    void findAll_sortBySubTaskNameAsc_shouldNotThrow() {
-        Pageable pageable = PageRequest.of(0, 10, Sort.by("subTaskName").ascending());
+    void findAll_sortByTaskNameAsc_shouldNotThrow() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("taskName").ascending());
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result).isNotNull();
@@ -267,8 +253,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("order").descending());
         stubFullChain(List.of(), 0L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result).isNotNull();
@@ -283,8 +269,24 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("dueDate").ascending());
         stubFullChain(List.of(), 0L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
+        );
+
+        assertThat(result).isNotNull();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // findAll — sorting by priority DESC
+    // ════════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void findAll_sortByPriorityDesc_shouldNotThrow() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("priority").descending());
+        stubFullChain(List.of(), 0L);
+
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result).isNotNull();
@@ -299,8 +301,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").descending());
         stubFullChain(List.of(), 0L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result).isNotNull();
@@ -315,8 +317,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("updatedAt").ascending());
         stubFullChain(List.of(), 0L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result).isNotNull();
@@ -330,24 +332,24 @@ class SubTaskDbWithDslTest {
     void findAll_withInvalidSortColumn_shouldThrowBadRequestException() {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("invalidColumn").ascending());
 
-        assertThatThrownBy(() -> subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        assertThatThrownBy(() -> taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         ))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("Sorting column is not valid!");
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — default sorting when no sort provided (subTask.order.asc)
+    // findAll — default sorting when no sort provided (task.order.asc)
     // ════════════════════════════════════════════════════════════════════════════
 
     @Test
     void findAll_withNoSort_shouldApplyDefaultOrderAscSorting() {
-        Pageable pageable = PageRequest.of(0, 10); // no sort → default subTask.order.asc()
+        Pageable pageable = PageRequest.of(0, 10); // no sort → default task.order.asc()
         stubFullChain(List.of(sampleDto), 1L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result.getContent()).isNotEmpty();
@@ -362,8 +364,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(1, 5); // page 2, size 5
         stubFullChain(List.of(sampleDto), 10L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result.getNumber()).isEqualTo(1);
@@ -378,16 +380,16 @@ class SubTaskDbWithDslTest {
 
     @Test
     void findAll_withMultipleResults_shouldReturnAllInPage() {
-        SubTaskResponseDTO dto2 = new SubTaskResponseDTO(
-                UUID.randomUUID().toString(), "SubTask Beta", Instant.now(),
-                "IN_PROGRESS", "feature", "Jane Doe",
+        TaskResponseDTO dto2 = new TaskResponseDTO(
+                UUID.randomUUID().toString(), "Task Beta", 2, Instant.now(),
+                "IN_PROGRESS", "Jane Doe", "feature",
                 Instant.now(), Instant.now(), 2
         );
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto, dto2), 2L);
 
-        Page<SubTaskResponseDTO> result = subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        Page<TaskResponseDTO> result = taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         assertThat(result.getContent()).hasSize(2);
@@ -404,8 +406,8 @@ class SubTaskDbWithDslTest {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto), 1L);
 
-        subTaskDbWithDsl.findAll(
-                TASK_ID, null, null, null, null, null, pageable
+        taskDbWithDsl.findAll(
+                STAGE_ID, null, null, null, null, null, null, pageable
         );
 
         verify(queryFactory, times(2)).select(any(Expression.class));

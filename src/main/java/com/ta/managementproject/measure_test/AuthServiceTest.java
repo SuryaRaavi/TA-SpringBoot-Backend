@@ -1,4 +1,4 @@
-package com.ta.managementproject.test;
+package com.ta.managementproject.measure_test;
 
 import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.LoginRequestDTO;
@@ -24,8 +24,8 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class AuthServiceTest {
@@ -347,5 +347,21 @@ public class AuthServiceTest {
 
         assertEquals("SUB_TASK_NOT_FOUND", exception.getMessage());
         verify(subTaskDb).findSubTaskBySubTaskId("INVALID-SUBTASK");
+    }
+
+    @Test
+    void validateProjectCancellation_Success(){
+        assertDoesNotThrow(() ->
+                authService.validateProjectCancellation(mockProject));
+    }
+
+    @Test
+    void validateProjectCancellation_ThrowsConflictException(){
+        mockProject.setCancelled(true);
+
+        ForbiddenException exception = assertThrows(ForbiddenException.class,
+                () -> authService.validateProjectCancellation(mockProject));
+
+        assertEquals("Project has been cancelled!", exception.getMessage());
     }
 }

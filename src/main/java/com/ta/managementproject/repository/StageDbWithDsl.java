@@ -2,6 +2,7 @@ package com.ta.managementproject.repository;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ta.managementproject.dto.response.StageResponseDTO;
 import com.ta.managementproject.entity.QStage;
@@ -42,7 +43,12 @@ public class StageDbWithDsl {
                         StageResponseDTO.class,
                         stage.stageId,
                         stage.stageName,
-                        stage.order
+                        stage.order,
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Long.class),
+                        Expressions.nullExpression(Double.class)
                 ))
                 .from(stage)
                 .where(predicate)

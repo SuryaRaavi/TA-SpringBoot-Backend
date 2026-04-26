@@ -5,6 +5,7 @@ import com.ta.managementproject.dto.request.LoginRequestDTO;
 import com.ta.managementproject.dto.response.LoginResponseDTO;
 import com.ta.managementproject.dto.response.RoleResponseDTO;
 import com.ta.managementproject.entity.*;
+import com.ta.managementproject.exception.BadRequestException;
 import com.ta.managementproject.exception.ForbiddenException;
 import com.ta.managementproject.exception.NotFoundException;
 import com.ta.managementproject.repository.*;
@@ -135,5 +136,12 @@ public class AuthServiceImpl implements AuthService {
             throw new NotFoundException("SUB_TASK_NOT_FOUND");
         }
         return subTask;
+    }
+
+    @Override
+    public void validateProjectCancellation(Project project){
+        if (project.isCancelled()){
+            throw new ForbiddenException("Project has been cancelled!");
+        }
     }
 }

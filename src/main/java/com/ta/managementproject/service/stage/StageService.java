@@ -12,8 +12,8 @@ public interface StageService {
     ResponseEntity<?> getAllStage(String projectId);
     ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO);
     ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO);
-    ResponseEntity<BaseResponseDTO<ProgressResponseDTO>> getStageStatistics(String stageId);
     ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO);
 
     ResponseEntity<?> deleteStageById(String projectId, String stageId);
+    ProgressResponseDTO getStageStatistics(String stageId);
 }

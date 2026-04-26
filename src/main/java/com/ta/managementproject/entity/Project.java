@@ -35,9 +35,6 @@ public class Project {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "status", nullable = false)
-    private String status;
-
     @Column(name = "start_date")
     private Instant startDate;
 
@@ -73,4 +70,7 @@ public class Project {
 
     @Column(name = "jc_expired_at")
     private Instant joinCodeExpiredAt;
+
+    @Column(name = "is_cancelled")
+    private boolean isCancelled;
 }

@@ -122,14 +122,13 @@ public class ManagementprojectApplication {
 					.projectName("Project 1")
 					.projectManager(projectManagerDb.findByUsername("pm.1"))
 					.description("Description for project 1")
-					.status("NOT_STARTED")
+
 					.build();
 
 			Project project2 = Project.builder()
 					.projectName("Project 2")
 					.projectManager(projectManagerDb.findByUsername("pm.2"))
 					.description("Description for project 2")
-					.status("NOT_STARTED")
 					.build();
 
 			if (projectDb.findAll().isEmpty()) {

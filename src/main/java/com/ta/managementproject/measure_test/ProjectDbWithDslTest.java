@@ -1,4 +1,4 @@
-package com.ta.managementproject.test;
+package com.ta.managementproject.measure_test;
 
 import com.querydsl.core.types.EntityPath;
 import com.querydsl.core.types.Expression;
@@ -20,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -28,18 +29,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ProjectDbWithDslTest {
+
     @Mock
     private JPAQueryFactory queryFactory;
 
     @InjectMocks
     private ProjectDbWithDsl projectDbWithDsl;
 
-    // Reusable JPAQuery mocks
     @Mock
     private JPAQuery<ProjectResponseDTO> selectQuery;
 
@@ -48,48 +48,44 @@ public class ProjectDbWithDslTest {
 
     private ProjectResponseDTO sampleDto;
 
+    /**
+     * Konstruktor ProjectResponseDTO sesuai urutan Projections.constructor di repository:
+     * projectId, projectName, description, fullNamePm, startDate, endDate,
+     * createdAt, updatedAt, status(null), finishedTask(null), inProgressTask(null),
+     * todoTask(null), totalTask(null), progress(null), isCancelled
+     *
+     * Gunakan konstruktor lengkap agar tidak mismatch dengan constructor yang ada.
+     */
     @BeforeEach
     void setUp() {
         sampleDto = new ProjectResponseDTO(
-                UUID.randomUUID().toString(),
-                "Project Alpha",
-                "ACTIVE",
-                java.time.Instant.now(),
-                java.time.Instant.now()
+                UUID.randomUUID().toString(), // projectId
+                "Project Alpha",              // projectName
+                "Desc Alpha",                 // description
+                "PM User",                    // fullNamePm
+                Instant.now(),                // startDate
+                Instant.now(),                // endDate
+                Instant.now(),                // createdAt
+                Instant.now(),                // updatedAt
+                null,                         // status
+                null,                         // finishedTask
+                null,                         // inProgressTask
+                null,                         // todoTask
+                null,                         // totalTask
+                null,                         // progress
+                false                         // isCancelled
         );
     }
 
-    // ─── Helper: stub select chain for ProjectResponseDTO ───────────────────────
+    // ─── Helper: stub select + count chain ──────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
-    private void stubSelectChain(List<ProjectResponseDTO> returnedResults) {
-        when(queryFactory.select(any(Expression.class))).thenReturn((JPAQuery) selectQuery);
-        when(selectQuery.from(any(EntityPath.class))).thenReturn((JPAQuery) selectQuery);
-        when(selectQuery.where(any(Predicate.class))).thenReturn((JPAQuery) selectQuery);
-        when(selectQuery.orderBy(any(OrderSpecifier[].class))).thenReturn((JPAQuery) selectQuery);
-        when(selectQuery.offset(anyLong())).thenReturn((JPAQuery) selectQuery);
-        when(selectQuery.limit(anyLong())).thenReturn((JPAQuery) selectQuery);
-        when(selectQuery.fetch()).thenReturn(returnedResults);
-    }
-
-    // ─── Helper: stub count chain ────────────────────────────────────────────────
-
-    @SuppressWarnings("unchecked")
-    private void stubCountChain(Long count) {
-        when(queryFactory.select(any(Expression.class)))
-                .thenReturn((JPAQuery) selectQuery)   // first call → select query
-                .thenReturn((JPAQuery) countQuery);   // second call → count query
-        when(countQuery.from(any(EntityPath.class))).thenReturn((JPAQuery) countQuery);
-        when(countQuery.where(any(Predicate.class))).thenReturn((JPAQuery) countQuery);
-        when(countQuery.fetchOne()).thenReturn(count);
-    }
-
-    // ─── Full stub: both select & count chains ──────────────────────────────────
-
+    /**
+     * Repository memanggil queryFactory.select() dua kali:
+     *   1. untuk data query  → kembalikan selectQuery
+     *   2. untuk count query → kembalikan countQuery
+     */
     @SuppressWarnings("unchecked")
     private void stubFullChain(List<ProjectResponseDTO> results, Long total) {
-        // First select() call → data query
-        // Second select() call → count query
         when(queryFactory.select(any(Expression.class)))
                 .thenReturn((JPAQuery) selectQuery)
                 .thenReturn((JPAQuery) countQuery);
@@ -118,7 +114,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(sampleDto), 1L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result).isNotNull();
@@ -137,7 +135,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(sampleDto), 1L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                null, "member_user", null, null, null, null, null, null, pageable
+                null, "member_user",
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result.getTotalElements()).isEqualTo(1L);
@@ -154,7 +154,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(), 0L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result.getContent()).isEmpty();
@@ -162,25 +164,35 @@ public class ProjectDbWithDslTest {
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — null count (fetchOne returns null)
+    // findAll — count null (fetchOne returns null) → totalElements = 0
     // ════════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Repository: total == null ? 0 : total → PageImpl dengan total 0.
+     */
     @Test
     void findAll_whenCountIsNull_shouldReturnTotalZero() {
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(), null);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result.getTotalElements()).isZero();
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — with all optional filters
+    // findAll — with all optional filters (tanpa parameter status)
     // ════════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Signature findAll di repository: pmUsername, memberUsername,
+     * startDate, endDate, createdAt, updatedAt, keyword, pageable.
+     * Tidak ada parameter "status".
+     */
     @Test
     void findAll_withAllFilters_shouldReturnFilteredPage() {
         Pageable pageable = PageRequest.of(0, 10);
@@ -189,12 +201,11 @@ public class ProjectDbWithDslTest {
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
                 "pm_user", null,
-                today.minusDays(30),
-                today,
-                "ACTIVE",
-                today.minusDays(7),
-                today,
-                "Alpha",
+                today.minusDays(30),  // startDate
+                today,                // endDate
+                today.minusDays(7),   // createdAt
+                today,                // updatedAt
+                "Alpha",              // keyword
                 pageable
         );
 
@@ -212,7 +223,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(sampleDto), 1L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result).isNotNull();
@@ -228,7 +241,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(), 0L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result).isNotNull();
@@ -244,7 +259,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(), 0L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result).isNotNull();
@@ -260,45 +277,59 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(), 0L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result).isNotNull();
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — invalid sort column throws BadRequestException
+    // findAll — kolom sort tidak valid → BadRequestException
     // ════════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Repository memvalidasi kolom sort terhadap whitelist SORTING_COLUMNS.
+     * Kolom tidak dikenal harus melempar BadRequestException sebelum query dijalankan.
+     */
     @Test
     void findAll_withInvalidSortColumn_shouldThrowBadRequestException() {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("invalidColumn").ascending());
 
         BadRequestException exception = assertThrows(BadRequestException.class,
                 () -> projectDbWithDsl.findAll(
-                        "pm_user", null, null, null, null, null, null, null, pageable));
+                        "pm_user", null,
+                        null, null, null, null, null,
+                        pageable));
 
         assertEquals("Sorting column is not valid!", exception.getMessage());
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — default sorting when no sort provided (unsorted pageable)
+    // findAll — tanpa sort → default sorting (createdAt DESC)
     // ════════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Jika pageable tidak menyertakan sort, repository menerapkan default
+     * project.createdAt.desc() secara otomatis.
+     */
     @Test
     void findAll_withNoSort_shouldApplyDefaultSorting() {
-        Pageable pageable = PageRequest.of(0, 10); // no sort → defaults to createdAt DESC
+        Pageable pageable = PageRequest.of(0, 10); // unsorted
         stubFullChain(List.of(sampleDto), 1L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result.getContent()).isNotEmpty();
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — pagination metadata is correct
+    // findAll — metadata pagination benar
     // ════════════════════════════════════════════════════════════════════════════
 
     @Test
@@ -307,7 +338,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(sampleDto), 10L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result.getNumber()).isEqualTo(1);
@@ -323,13 +356,25 @@ public class ProjectDbWithDslTest {
     @Test
     void findAll_withMultipleResults_shouldReturnAllInPage() {
         ProjectResponseDTO dto2 = new ProjectResponseDTO(
-                UUID.randomUUID().toString(), "Project Beta", "INACTIVE", java.time.Instant.now(), java.time.Instant.now()
+                UUID.randomUUID().toString(),
+                "Project Beta",
+                "Desc Beta",
+                "PM User",
+                Instant.now(),
+                Instant.now(),
+                Instant.now(),
+                Instant.now(),
+                null, null, null, null, null, null,
+                false
         );
+
         Pageable pageable = PageRequest.of(0, 10);
         stubFullChain(List.of(sampleDto, dto2), 2L);
 
         Page<ProjectResponseDTO> result = projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         assertThat(result.getContent()).hasSize(2);
@@ -337,7 +382,7 @@ public class ProjectDbWithDslTest {
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // findAll — queryFactory.select is called exactly twice (data + count)
+    // findAll — queryFactory.select dipanggil tepat 2 kali (data + count)
     // ════════════════════════════════════════════════════════════════════════════
 
     @Test
@@ -347,7 +392,9 @@ public class ProjectDbWithDslTest {
         stubFullChain(List.of(sampleDto), 1L);
 
         projectDbWithDsl.findAll(
-                "pm_user", null, null, null, null, null, null, null, pageable
+                "pm_user", null,
+                null, null, null, null, null,
+                pageable
         );
 
         verify(queryFactory, times(2)).select(any(Expression.class));
