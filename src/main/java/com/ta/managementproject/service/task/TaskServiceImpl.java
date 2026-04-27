@@ -146,7 +146,6 @@ public class TaskServiceImpl implements TaskService {
         task.setDescription(requestDTO.getDescription());
         task.setPriority(requestDTO.getPriority());
         task.setDueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant());
-        task.setStatus(requestDTO.getStatus());
         task.setProjectMember(requestDTO.getProjectMember());
 
         taskDb.save(task);
