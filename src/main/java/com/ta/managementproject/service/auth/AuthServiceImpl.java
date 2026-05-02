@@ -55,8 +55,8 @@ public class AuthServiceImpl implements AuthService {
         this.subTaskDb = subTaskDb;
     }
 
-    @Override
-    public ResponseEntity<?> doLogin(LoginRequestDTO request) throws Exception {
+    @Override // Total CYC: 6, LOC: 45
+    public ResponseEntity<?> doLogin(LoginRequestDTO request) throws Exception { // CYC: 3, LOC: 20
         LoginResponseDTO loginResponseDTO = new LoginResponseDTO();
 
         String username = request.getUsername();
@@ -68,21 +68,22 @@ public class AuthServiceImpl implements AuthService {
             throw new NotFoundException("USERNAME_NOT_FOUND");
         }
 
-        String encryptedPass = aesUtil.encrypt(password);
+        String encryptedPass = aesUtil.encrypt(password); // CYC: 1, LOC: 7
 
         if (!encryptedPass.equals(selectedUser.getPassword())) {
             throw new ForbiddenException("Username atau password yang dimasukkan salah!");
         }
 
-        String jwtToken = jwtUtils.generateJwtToken(username, selectedUser.getRole().getName());
+        String jwtToken = jwtUtils.generateJwtToken(username, selectedUser.getRole().getName()); // CYC: 1, LOC: 9
         loginResponseDTO.setRole(new RoleResponseDTO(selectedUser.getRole().getName()));
         loginResponseDTO.setToken(jwtToken);
         loginResponseDTO.setUsername(username);
         loginResponseDTO.setExpirationDate(jwtUtils.getExpirationFromToken(jwtToken));
 
-        return utilService.buildResponse(HttpStatus.OK, "Login Successful", loginResponseDTO);
+        return utilService.buildResponse(HttpStatus.OK, "Login Successful", loginResponseDTO); // CYC: 1, LOC: 9
     }
 
+    // CYC: 2, LOC: 8
     @Override
     public Project validateProject(String projectId) {
         Project project = projectDb.findByProjectId(projectId);
@@ -92,6 +93,7 @@ public class AuthServiceImpl implements AuthService {
         return project;
     }
 
+    // CYC: 2, LOC: 6
     @Override
     public void validateManagerAccess(Project project, String username) {
         if (!project.getProjectManager().getUsername().equals(username)) {
@@ -99,6 +101,7 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    // CYC: 3, LOC: 10
     @Override
     public void validateManagerAndMemberAccess(Project project, String username){
         if (
@@ -111,7 +114,7 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    @Override
+    @Override // CYC: 2, LOC: 8
     public Stage validateStage(String stageId){
         Stage stage = stageDb.findByStageId(stageId);
         if (stage == null){
@@ -120,7 +123,7 @@ public class AuthServiceImpl implements AuthService {
         return stage;
     }
 
-    @Override
+    @Override // CYC: 2, LOC: 8
     public Task validateTask(String taskId){
         Task task = taskDb.findByTaskId(taskId);
         if (task == null){
@@ -129,7 +132,7 @@ public class AuthServiceImpl implements AuthService {
         return task;
     }
 
-    @Override
+    @Override // CYC: 2, LOC: 8
     public SubTask validateSubTask(String subTaskId){
         SubTask subTask = subTaskDb.findSubTaskBySubTaskId(subTaskId);
         if (subTask == null){
@@ -138,7 +141,7 @@ public class AuthServiceImpl implements AuthService {
         return subTask;
     }
 
-    @Override
+    @Override // CYC: 2, LOC: 6
     public void validateProjectCancellation(Project project){
         if (project.isCancelled()){
             throw new ForbiddenException("Project has been cancelled!");

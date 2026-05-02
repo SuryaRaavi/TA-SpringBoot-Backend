@@ -17,4 +17,6 @@ public interface ProjectService {
     ResponseEntity<?> generateJoinCode(String kodeProyek);
 
     ResponseEntity<?> joinProject(String joinCode);
+
+    ResponseEntity<?> cancelProject(String projectId);
 }

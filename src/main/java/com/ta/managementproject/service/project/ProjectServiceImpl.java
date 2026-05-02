@@ -16,41 +16,38 @@ import com.ta.managementproject.service.stage.StageService;
 import com.ta.managementproject.service.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Transactional
 public class ProjectServiceImpl implements ProjectService {
     private final ProjectDb projectDb;
     private final HttpServletRequest request;
-    private final JwtUtils jwtUtils;
     private final AuthService authService;
     private final ProjectManagerDb projectManagerDb;
     private final MemberInProjectDb memberInProjectDb;
     private final ProjectMemberDb projectMemberDb;
     private final UserDb userDb;
-    private final StageService stageService;
+
     private final UserService userService;
     private final UtilService utilService;
     private final ProjectDbWithDsl projectDbWithDsl;
 
+    private final SecureRandom secureRandom = new SecureRandom();
+
     public ProjectServiceImpl(
             ProjectDb projectDb,
             HttpServletRequest request,
-            JwtUtils jwtUtils,
             AuthService authService,
             ProjectManagerDb projectManagerDb,
             MemberInProjectDb memberInProjectDb,
@@ -63,26 +60,24 @@ public class ProjectServiceImpl implements ProjectService {
     ) {
         this.projectDb = projectDb;
         this.request = request;
-        this.jwtUtils = jwtUtils;
         this.authService = authService;
         this.projectManagerDb = projectManagerDb;
         this.memberInProjectDb = memberInProjectDb;
         this.projectMemberDb = projectMemberDb;
         this.userDb = userDb;
-        this.stageService = stageService;
         this.userService = userService;
         this.utilService = utilService;
         this.projectDbWithDsl = projectDbWithDsl;
     }
 
-    @Override
+    @Override // Total CYC: 28, LOC: 154
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getAllProject(
+    public ResponseEntity<?> getAllProject( // CYC: 6, LOC: 25, COG: 4
             Pageable pageable, LocalDate startDate, LocalDate endDate, LocalDate createdAt, LocalDate updatedAt, String keyword
     ) {
-        Role userRole = userService.getUserRoleByUsername(jwtUtils.getUserNameFromRequest(request));
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        Role userRole = userService.getUserRoleByUsername(username); // CYC: 1, LOC: 5, COG: 0
 
-        String username = jwtUtils.getUserNameFromRequest(request);
 
         Page<ProjectResponseDTO> projectList;
 
@@ -92,30 +87,19 @@ public class ProjectServiceImpl implements ProjectService {
 
         projectList = userRole == Role.PROJECT_MANAGER ?
                 projectDbWithDsl.findAll(username, null, startDate, endDate, createdAt, updatedAt, keyword, pageable) :
-                projectDbWithDsl.findAll(null, username, startDate, endDate, createdAt, updatedAt, keyword, pageable);
+                projectDbWithDsl.findAll(null, username, startDate, endDate, createdAt, updatedAt, keyword, pageable); // CYC: 19, LOC: 112
 
-        List<ProjectResponseDTO> projectListWithSummary = new ArrayList<>();
 
-        for (ProjectResponseDTO project: projectList.getContent()){
-            projectListWithSummary.add(assignProgressToProject(project, getProjectStatistics(project.getProjectId())));
-        }
-
-        Page<ProjectResponseDTO> newProjectList = new PageImpl<>(
-          projectListWithSummary,
-          projectList.getPageable(),
-          projectList.getTotalElements()
-        );
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", newProjectList);
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", projectList); // CYC: 1, LOC: 9, COG: 0
     }
 
-    @Override
-    public ResponseEntity<?> addNewProject(CreateUpdateProjectRequestDTO requestDTO) {
+    @Override // Total CYC: 4, LOC: 30
+    public ResponseEntity<?> addNewProject(CreateUpdateProjectRequestDTO requestDTO) { // CYC: 2, LOC: 18
         if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())){
             throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
         }
 
-        ProjectManager pm = projectManagerDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+        ProjectManager pm = projectManagerDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
 
         Project newProyek = Project
                         .builder()
@@ -129,17 +113,18 @@ public class ProjectServiceImpl implements ProjectService {
 
         projectDb.save(newProyek);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.CREATED, "SUCCESS", new CrudResponseDTO("SUCCESS", "The project has been CREATED!"));
     }
 
-    @Override
-    public ResponseEntity<?> updateProject(String projectId, CreateUpdateProjectRequestDTO requestDTO) {
-            User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
-            Project project = authService.validateProject(projectId);
+    @Override // Total CYC: 14, LOC: 47
+    public ResponseEntity<?> updateProject(String projectId, CreateUpdateProjectRequestDTO requestDTO) { // CYC: 8, LOC: 21
+            User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
+            Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
-            authService.validateManagerAccess(project, user.getUsername());
+            authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6
             if (project.isCancelled()){
-                throw new ConflictException("Update project is not allowed, project status is cancelled!");
+                throw new ConflictException("Update project is not allowed, project is already cancelled!");
             }
 
             if (requestDTO.getEndDate().isBefore(requestDTO.getStartDate())){
@@ -152,81 +137,96 @@ public class ProjectServiceImpl implements ProjectService {
                             .description(requestDTO.getDescription() == null ? project.getDescription() : requestDTO.getDescription())
                             .startDate(requestDTO.getStartDate() == null ? project.getStartDate() : requestDTO.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                             .endDate(requestDTO.getEndDate() == null ? project.getEndDate() : requestDTO.getEndDate().atStartOfDay(ZoneOffset.UTC).toInstant())
-                            .isCancelled(requestDTO.getIsCancelled() == null ? project.isCancelled() : requestDTO.getIsCancelled())
                             .build()
             );
 
+            // CYC: 1, LOC: 9
             return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "The project has been UPDATED!"));
     }
 
+    // Total CYC: 8, LOC: 47
     @Override
-    public ResponseEntity<?> getProjectDetail(String projectId) {
-        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+    public ResponseEntity<?> getProjectDetail(String projectId) { // CYC: 1, LOC: 17
+        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
 
-        Project project = authService.validateProject(projectId);
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
-        authService.validateManagerAndMemberAccess(project, user.getUsername());
+        authService.validateManagerAndMemberAccess(project, user.getUsername()); // CYC: 3, LOC: 10
 
-        ProjectResponseDTO responseDTO = new ProjectResponseDTO();
+        ProjectDetailResponseDTO responseDTO = ProjectDetailResponseDTO.builder()
+                .projectId(projectId)
+                .projectName(project.getProjectName())
+                .description(project.getDescription())
+                .fullNamePm(project.getProjectManager().getFullName())
+                .startDate(project.getStartDate())
+                .endDate(project.getEndDate())
+                .createdAt(project.getCreatedAt())
+                .updatedAt(project.getUpdatedAt())
+                .status(projectDb.getProjectStatus(projectId))
+                .finishedTask(project.getFinishedTask())
+                .todoTask(project.getTodoTask())
+                .inProgressTask(project.getInProgressTask())
+                .totalTask(project.getTotalTask())
+                .progress(project.getProgress())
+                .isCancelled(project.isCancelled())
+                .build();
 
-        responseDTO.setProjectId(projectId);
-        responseDTO.setProjectName(project.getProjectName());
-        responseDTO.setDescription(project.getDescription());
-        responseDTO.setFullNamePm(project.getProjectManager().getFullName());
-        responseDTO.setStartDate(project.getStartDate());
-        responseDTO.setEndDate(project.getEndDate());
-        responseDTO.setCreatedAt(project.getCreatedAt());
-        responseDTO.setUpdatedAt(project.getUpdatedAt());
-
-        responseDTO = assignProgressToProject(responseDTO, getProjectStatistics(projectId));
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO);
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO); // CYC: 1, LOC: 9
     }
 
-    @Override
+    @Override // Total CYC: 8, LOC: 38
     @Transactional
-    public ResponseEntity<?> deleteProjectById(String projectId) {
-        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+    public ResponseEntity<?> deleteProjectById(String projectId) { // CYC: 2, LOC: 12
+        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
 
-        Project project = authService.validateProject(projectId);
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
-        authService.validateManagerAccess(project, user.getUsername());
+        authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6
 
-        if (!project.getStageList().isEmpty()){
-            project.getStageList().stream().forEach(stage -> stageService.deleteStageById(projectId, stage.getStageId()));
-        }
+        projectDb.softDeleteSubTaskByProjectId(projectId);
+        projectDb.softDeleteTaskByProjectId(projectId);
+        projectDb.softDeleteStageByProjectId(projectId);
 
         projectDb.delete(project);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Project has been DELETED!"));
     }
 
-    @Override
-    public ResponseEntity<?> generateJoinCode(String projectId) {
-        String username = jwtUtils.getUserNameFromRequest(request);
+    @Override // Total CYC: 11, LOC: 55
+    public ResponseEntity<?> generateJoinCode(String projectId) { // CYC: 3, LOC: 23
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
 
-        Project project = authService.validateProject(projectId);
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
-        authService.validateManagerAccess(project, username);
-        authService.validateProjectCancellation(project);
+        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6
+        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
 
         if (
                 project.getJoinCode() == null ||
                         project.getJoinCodeExpiredAt().isBefore(Instant.now())
         ) {
+            byte[] randomBytes = new byte[16];
+            secureRandom.nextBytes(randomBytes);
+
             project.setJoinCode(
-                    UUID.randomUUID().toString().substring(0, 8).toUpperCase()
+                    Base64.getUrlEncoder()
+                            .withoutPadding()
+                            .encodeToString(randomBytes)
+                            .substring(0, 16)
             );
+
             project.setJoinCodeExpiredAt(Instant.now().plusSeconds(86400));
             projectDb.save(project);
         }
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.CREATED, "SUCCESS", project.getJoinCode());
     }
 
-    @Override
-    public ResponseEntity<?> joinProject(String joinCode) {
-        String username = jwtUtils.getUserNameFromRequest(request);
+    @Override // Total CYC: 8, LOC: 39
+    public ResponseEntity<?> joinProject(String joinCode) { // CYC: 3, LOC: 21
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
 
         ProjectMember pmb = projectMemberDb.findByUsername(username);
         Project project = projectDb.findByJoinCode(joinCode);
@@ -235,7 +235,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new NotFoundException("PROJECT_NOT_FOUND!");
         }
 
-        authService.validateProjectCancellation(project);
+        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
 
         if (project.getJoinCodeExpiredAt().isBefore(Instant.now())){
             throw new UnprocessableContentException("Join code has beed expired!");
@@ -250,59 +250,20 @@ public class ProjectServiceImpl implements ProjectService {
 
         memberInProjectDb.save(memberInProject);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.CREATED, "SUCCESS", new CrudResponseDTO("Project Code", project.getProjectId()));
     }
 
-    private ProgressResponseDTO getProjectStatistics(String projectId) {
-            User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+    @Override // Total CYC: 9, LOC: 34
+    public ResponseEntity<?> cancelProject(String projectId){ // CYC: 2, LOC: 8
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
-            Project project = authService.validateProject(projectId);
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
+        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6
 
-            authService.validateManagerAndMemberAccess(project, user.getUsername());
+        projectDb.save(project.toBuilder().isCancelled(true).build());
 
-            Long totalTask = 0L;
-            Long totalFinishedTask = 0L;
-            Long totalInProgressTask = 0L;
-            Long totalToDoTask = 0L;
-
-            for (Stage stage: project.getStageList()){
-                ProgressResponseDTO progressResponseDTO = stageService.getStageStatistics(stage.getStageId());
-
-                totalTask += progressResponseDTO.getTotalTask();
-                totalFinishedTask += progressResponseDTO.getFinishedTask();
-                totalInProgressTask += progressResponseDTO.getInProgressTask();
-                totalToDoTask += progressResponseDTO.getTodoTask();
-            }
-
-            return ProgressResponseDTO.builder()
-                            .progress(totalTask == 0 ? 0.00 : (totalFinishedTask * 1.0 / totalTask * 100))
-                            .finishedTask(totalFinishedTask)
-                            .inProgressTask(totalInProgressTask)
-                            .todoTask(totalToDoTask)
-                            .totalTask(totalTask)
-                            .build();
+        // CYC: 1, LOC: 9
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("Project Code", project.getProjectId()));
     }
-
-    private ProjectResponseDTO assignProgressToProject(ProjectResponseDTO project, ProgressResponseDTO progress){
-        String status = "";
-
-        if (project.isCancelled()) {
-            status = "CANCELLED";
-        }else if (Objects.equals(progress.getTodoTask(), progress.getTotalTask())){
-            status = "NOT_STARTED";
-        }else if (Objects.equals(progress.getFinishedTask(), progress.getTotalTask())){
-            status = "COMPLETED";
-        }else{
-            status = "IN_PROGRESS";
-        }
-
-        return project.toBuilder()
-                .inProgressTask(progress.getInProgressTask())
-                .finishedTask(project.getFinishedTask())
-                .todoTask(progress.getTodoTask())
-                .status(status)
-                .progress(progress.getProgress())
-                .build();
-    }
-
 }

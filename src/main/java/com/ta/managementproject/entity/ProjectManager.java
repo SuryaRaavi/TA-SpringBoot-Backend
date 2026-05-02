@@ -20,5 +20,4 @@ public class ProjectManager extends User{
     @OneToMany(mappedBy = "projectManager", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Project> projectList = new ArrayList<>();
-
 }

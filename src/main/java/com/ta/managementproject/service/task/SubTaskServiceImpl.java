@@ -3,7 +3,9 @@ package com.ta.managementproject.service.task;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.List;
+import java.util.Objects;
+
+import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.repository.SubTaskDbWithDsl;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
@@ -35,7 +37,6 @@ public class SubTaskServiceImpl implements SubTaskService{
     private final SubTaskDb subTaskDb;
     private final TaskDb taskDb;
     private final MemberInProjectDb memberInProjectDb;
-    private final JwtUtils jwtUtils;
     private final HttpServletRequest request;
     private final UserService userService;
     private final AuthService authService;
@@ -47,7 +48,6 @@ public class SubTaskServiceImpl implements SubTaskService{
             SubTaskDb subTaskDb,
             TaskDb taskDb,
             MemberInProjectDb memberInProjectDb,
-            JwtUtils jwtUtils,
             HttpServletRequest request,
             UserService userService,
             AuthService authService,
@@ -57,7 +57,6 @@ public class SubTaskServiceImpl implements SubTaskService{
         this.subTaskDb = subTaskDb;
         this.taskDb = taskDb;
         this.memberInProjectDb = memberInProjectDb;
-        this.jwtUtils = jwtUtils;
         this.request = request;
         this.userService = userService;
         this.authService = authService;
@@ -65,12 +64,8 @@ public class SubTaskServiceImpl implements SubTaskService{
         this.subTaskDbWithDsl = subTaskDbWithDsl;
     }
 
-    private String getUsernameFromRequest() {
-        return jwtUtils.getUserNameFromRequest(request);
-    }
-
-    @Override
-    public ResponseEntity<?> getAllSubTask(
+    @Override // Total CYC: 26, LOC: 154
+    public ResponseEntity<?> getAllSubTask( // CYC: 1, LOC: 23
             String taskId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -79,10 +74,12 @@ public class SubTaskServiceImpl implements SubTaskService{
             String keyword,
             Pageable pageable
     ) {
-        Task task = authService.validateTask(taskId);
-        authService.validateManagerAndMemberAccess(task.getStage().getProject(), getUsernameFromRequest());
+        Task task = authService.validateTask(taskId); // CYC: 2, LOC: 8
+        authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 1, LOC: 3
+        // CYC: 3, LOC: 10
 
-        Page<SubTaskResponseDTO> subTasks = subTaskDbWithDsl.findAll(
+        Page<SubTaskResponseDTO> subTasks = subTaskDbWithDsl.findAll( // CYC: 18, LOC: 101
                 taskId,
                 dueDate,
                 createdAt,
@@ -92,15 +89,18 @@ public class SubTaskServiceImpl implements SubTaskService{
                 pageable
         );
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", subTasks);
     }
 
-    @Override
+    @Override // Total CYC: 18, LOC: 117
     @Transactional
-    public ResponseEntity<?> addNewSubTask(String taskId, CreateUpdateSubTaskRequestDTO requestDTO) {
-        Task task = authService.validateTask(taskId);
-        authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromRequest());
-        authService.validateProjectCancellation(task.getStage().getProject());
+    public ResponseEntity<?> addNewSubTask(String taskId, CreateUpdateSubTaskRequestDTO requestDTO) { // CYC: 2, LOC: 24
+        Task task = authService.validateTask(taskId); // CYC: 2, LOC: 8
+        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 2, LOC: 6
+        // CYC: 1, LOC: 3
+        authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6
 
         Integer currentTotal = subTaskDb.getTotalSubTask(taskId);
 
@@ -117,17 +117,22 @@ public class SubTaskServiceImpl implements SubTaskService{
                 .build();
 
         subTaskDb.save(newSubTask);
-        checkAndUpdateTask(task);
+        utilService.updateTaskStatusAndSummary(taskId); // Total CYC: 4, LOC: 25
+        utilService.updateStageSummary(task.getStage().getStageId()); // CYC: 2, LOC: 18
+        utilService.updateProjectSummary(task.getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.CREATED, "Sub-task created successfully", new CrudResponseDTO(newSubTask.getSubTaskId(), "SUCCESS"));
     }
 
-    @Override
-    public ResponseEntity<?> updateSubTask(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) {
-        SubTask subTask = authService.validateSubTask(subTaskId);
+    @Override // Total CYC: 14, LOC: 45
+    public ResponseEntity<?> updateSubTask(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) { // CYC: 6, LOC: 13
+        SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8
 
-        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
-        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
+        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 2, LOC: 6
+        // CYC: 1, LOC: 3
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6
 
         subTask.setSubTaskName(requestDTO.getSubTaskName() != null ? requestDTO.getSubTaskName() : subTask.getSubTaskName());
         subTask.setDescription(requestDTO.getDescription() != null ? requestDTO.getDescription() : subTask.getDescription());
@@ -136,14 +141,17 @@ public class SubTaskServiceImpl implements SubTaskService{
         subTask.setProjectMember(requestDTO.getProjectMember() != null ? requestDTO.getProjectMember() : subTask.getProjectMember());
 
         subTaskDb.save(subTask);
+
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "Sub-task updated successfully", new CrudResponseDTO(subTaskId, "SUCCESS"));
     }
 
-    @Override
-    public ResponseEntity<?> getDetailSubTask(String subTaskId) {
-        SubTask subTask = authService.validateSubTask(subTaskId);
-        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
-        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
+    @Override // Total CYC: 9, LOC: 46
+    public ResponseEntity<?> getDetailSubTask(String subTaskId) { // CYC: 2, LOC: 16
+        SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8
+        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 1, LOC: 3
+        // CYC: 3, LOC: 10
 
         SubTaskDetailResponseDTO detail = new SubTaskDetailResponseDTO(
                 subTask.getSubTaskId(),
@@ -154,82 +162,81 @@ public class SubTaskServiceImpl implements SubTaskService{
                 subTask.getLabel(),
                 subTask.getProjectMember() != null ? subTask.getProjectMember().getFullName() : "Unassigned"
         );
+
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", detail);
     }
 
-    @Override
+    @Override // Total CYC: 17, LOC: 107
     @Transactional
-    public ResponseEntity<?> deleteSubTaskById(String taskId, String subTaskId) {
-        SubTask subTask = authService.validateSubTask(subTaskId);
-        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
-        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
+    public ResponseEntity<?> deleteSubTaskById(String taskId, String subTaskId) { // CYC: 1, LOC: 14
+        SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8
+        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 2, LOC: 6
+        // CYC: 1, LOC: 3
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6
 
         Integer order = subTask.getOrder();
 
         subTaskDb.delete(subTask);
         subTaskDb.updateSubTaskOrderAfterDelete(taskId, order);
-        checkAndUpdateTask(subTask.getTask());
+        utilService.updateTaskStatusAndSummary(taskId); // Total CYC: 4, LOC: 25
+        utilService.updateStageSummary(subTask.getTask().getStage().getStageId()); // CYC: 2, LOC: 18
+        utilService.updateProjectSummary(subTask.getTask().getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.CREATED, "Sub-task deleted successfully", new CrudResponseDTO(subTaskId, "DELETED"));
     }
 
-    @Override
+    @Override // Total CYC: 13, LOC: 61
     @Transactional
-    public ResponseEntity<?> reorderSubTask(String taskId, ReorderRequestDTO requestDTO) {
-        authService.validateTask(taskId);
-        SubTask subTask = authService.validateSubTask(requestDTO.getId());
+    public ResponseEntity<?> reorderSubTask(String taskId, ReorderRequestDTO requestDTO) { // CYC: 3, LOC: 21
+        authService.validateTask(taskId); // CYC: 2, LOC: 8
+        SubTask subTask = authService.validateSubTask(requestDTO.getId()); // CYC: 2, LOC: 8
 
-        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
-        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
+        int totalSubTask = subTask.getTask().getSubTaskList().size();
+        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 2, LOC: 6
+        // CYC: 1, LOC: 3
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6
 
-        if (subTask.getOrder() > requestDTO.getOrder()){
-            subTaskDb.updateSubTaskOrderAbove(taskId, requestDTO.getOrder() - 1, subTask.getOrder());
-        }else if (subTask.getOrder() < requestDTO.getOrder()){
-            subTaskDb.updateSubTaskOrderBelow(taskId, requestDTO.getOrder(), subTask.getOrder() + 1);
+        int boundedOrder = Math.max(1, Math.min(totalSubTask, requestDTO.getOrder()));
+
+        if (Objects.equals(subTask.getOrder(), boundedOrder)) {
+            throw new ConflictException("Task is already in the requested position!");
         }
 
-        subTask.setOrder(requestDTO.getOrder());
+        if (subTask.getOrder() > boundedOrder){
+            subTaskDb.updateSubTaskOrderAbove(taskId, boundedOrder, subTask.getOrder() - 1);
+        }else {
+            subTaskDb.updateSubTaskOrderBelow(taskId, boundedOrder + 1, subTask.getOrder() );
+        }
+
+        subTask.setOrder(boundedOrder);
         subTaskDb.save(subTask);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "Sub-tasks reordered successfully", null);
     }
 
-    @Override
+    @Override // Total CYC: 18, LOC: 110
     @Transactional
-    public ResponseEntity<?> updateSubTaskStatus(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) {
-        SubTask subTask = authService.validateSubTask(subTaskId);
-        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), getUsernameFromRequest());
-        authService.validateProjectCancellation(subTask.getTask().getStage().getProject());
+    public ResponseEntity<?> updateSubTaskStatus(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) { // CYC: 1, LOC: 13
+        SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8
+        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 1, LOC: 3
+        // CYC: 3, LOC: 10
+
+        authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6
 
         subTask.setStatus(requestDTO.getStatus());
         subTaskDb.save(subTask);
-        checkAndUpdateTask(subTask.getTask());
+        utilService.updateTaskStatusAndSummary(subTask.getTask().getTaskId()); // Total CYC: 4, LOC: 25
+        utilService.updateStageSummary(subTask.getTask().getStage().getStageId()); // CYC: 2, LOC: 18
+        utilService.updateProjectSummary(subTask.getTask().getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
 
+
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "Task status updated successfully", new CrudResponseDTO(subTaskId, Instant.now().toString()));
-    }
-
-    private void checkAndUpdateTask(Task task){
-        List<SubTask> subTaskList = task.getSubTaskList();
-        String status = "";
-
-        long totalTodo = 0L;
-        long totalFinished = 0L;
-
-        for (SubTask subTask: subTaskList){
-            switch (subTask.getStatus()) {
-                case ("TODO") -> totalTodo++;
-                case ("FINISHED") -> totalFinished++;
-            }
-        }
-
-       if (subTaskList.size() == totalTodo){
-            status = "TODO";
-       }else if (subTaskList.size() == totalFinished){
-            status = "FINISHED";
-       }else{
-            status = "IN_PROGRESS";
-       }
-
-       taskDb.save(task.toBuilder().status(status).build());
     }
 }

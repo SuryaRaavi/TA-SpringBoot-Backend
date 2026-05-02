@@ -13,10 +13,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "sub_task",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"task_id", "sub_task_order"})
-        })
+@Table(name = "sub_task")
 @Entity
 @SQLDelete(sql = "UPDATE sub_task SET is_deleted = true WHERE sub_task_id = ?")
 @SQLRestriction("is_deleted IS false")

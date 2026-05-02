@@ -1,24 +1,20 @@
 package com.ta.managementproject.dto.response;
 
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
 
 @EqualsAndHashCode(callSuper = true)
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @SuperBuilder
-public class TaskDetailResponseDTO extends TaskResponseDTO{
-    private String description;
+public class ProjectDetailResponseDTO extends ProjectResponseDTO{
+    private String status;
     private Long totalTask;
     private Long finishedTask;
     private Long todoTask;
     private Long inProgressTask;
     private Double progress;
-    private Integer order;
 }

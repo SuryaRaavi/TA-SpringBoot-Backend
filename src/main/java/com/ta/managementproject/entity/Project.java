@@ -73,4 +73,19 @@ public class Project {
 
     @Column(name = "is_cancelled")
     private boolean isCancelled;
+
+    @Column(name = "total_task")
+    private Long totalTask;
+
+    @Column(name = "finished_task")
+    private Long finishedTask;
+
+    @Column(name = "todo_task")
+    private Long todoTask;
+
+    @Column(name = "in_progress_task")
+    private Long inProgressTask;
+
+    @Column(name = "progress")
+    private Double progress;
 }

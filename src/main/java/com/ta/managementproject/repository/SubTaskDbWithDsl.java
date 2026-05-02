@@ -31,7 +31,7 @@ public class SubTaskDbWithDsl {
     private static List<String> SORTING_COLUMNS = List.of
             ("subTaskName", "order", "createdAt", "updatedAt", "dueDate");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) {
+    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -74,7 +74,7 @@ public class SubTaskDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter(
+    private BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 34
             String taskId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -116,7 +116,8 @@ public class SubTaskDbWithDsl {
         return builder;
     }
 
-    public Page<SubTaskResponseDTO> findAll(
+    // Total CYC: 18, LOC: 101
+    public Page<SubTaskResponseDTO> findAll( // CYC: 2, LOC: 38
             String taskId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -125,9 +126,9 @@ public class SubTaskDbWithDsl {
             String keyword,
             Pageable pageable
     ){
-        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29
         BooleanBuilder predicate = buildDynamicFilter
-                (taskId, dueDate, createdAt, updatedAt, order, keyword);
+                (taskId, dueDate, createdAt, updatedAt, order, keyword); // CYC: 6, LOC: 34
 
         List<SubTaskResponseDTO> results = queryFactory
                 .select(Projections.constructor(

@@ -19,10 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "task",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"stage_id", "task_order"})
-})
+@Table(name = "task")
 @Entity
 @SQLDelete(sql = "UPDATE task SET is_deleted = true WHERE task_id = ?")
 @SQLRestriction("is_deleted IS false")
@@ -80,4 +77,19 @@ public class Task {
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<SubTask> subTaskList = new ArrayList<>();
+
+    @Column(name = "total_task")
+    private Long totalTask;
+
+    @Column(name = "finished_task")
+    private Long finishedTask;
+
+    @Column(name = "todo_task")
+    private Long todoTask;
+
+    @Column(name = "in_progress_task")
+    private Long inProgressTask;
+
+    @Column(name = "progress")
+    private Double progress;
 }

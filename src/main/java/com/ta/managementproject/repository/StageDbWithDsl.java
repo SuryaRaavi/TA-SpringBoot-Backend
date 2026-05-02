@@ -2,7 +2,6 @@ package com.ta.managementproject.repository;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ta.managementproject.dto.response.StageResponseDTO;
 import com.ta.managementproject.entity.QStage;
@@ -17,24 +16,9 @@ public class StageDbWithDsl {
     private final JPAQueryFactory queryFactory;
     private final QStage stage = QStage.stage;
 
-    public Long totalStageByProject(String projectId){
-        Long total = queryFactory
-                .select(stage.count())
-                .from(stage)
-                .where(stage.project.projectId.eq(projectId))
-                .fetchOne();
-        return total == null ? 0L : total;
-    }
-
-    public List<StageResponseDTO> findAll(String pmUsername, String memberUsername, String projectId) {
+    public List<StageResponseDTO> findAll(String projectId) { // CYC: 1, LOC: 14
 
         BooleanBuilder predicate = new BooleanBuilder();
-
-        if (pmUsername != null) {
-            predicate.and(stage.project.projectManager.username.eq(pmUsername));
-        } else {
-            predicate.and(stage.project.memberInProjectList.any().projectMember.username.eq(memberUsername));
-        }
 
         predicate.and(stage.project.projectId.eq(projectId));
 
@@ -43,12 +27,7 @@ public class StageDbWithDsl {
                         StageResponseDTO.class,
                         stage.stageId,
                         stage.stageName,
-                        stage.order,
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Double.class)
+                        stage.order
                 ))
                 .from(stage)
                 .where(predicate)

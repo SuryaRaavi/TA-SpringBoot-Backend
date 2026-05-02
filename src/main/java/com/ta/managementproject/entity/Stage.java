@@ -19,10 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@Table(name = "stage",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"project_id", "stage_order"})
-        })
+@Table(name = "stage")
 @Entity
 @SQLDelete(sql = "UPDATE stage SET is_deleted = true WHERE stage_id = ?")
 @SQLRestriction("is_deleted IS false")
@@ -58,4 +55,19 @@ public class Stage {
     @JoinColumn(name = "project", nullable = false)
     @JsonBackReference
     private Project project;
+
+    @Column(name = "total_task")
+    private Long totalTask;
+
+    @Column(name = "finished_task")
+    private Long finishedTask;
+
+    @Column(name = "todo_task")
+    private Long todoTask;
+
+    @Column(name = "in_progress_task")
+    private Long inProgressTask;
+
+    @Column(name = "progress")
+    private Double progress;
 }

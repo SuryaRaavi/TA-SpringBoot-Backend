@@ -4,17 +4,16 @@ import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.ProgressResponseDTO;
+import com.ta.managementproject.dto.response.StageDetailResponseDTO;
 import com.ta.managementproject.dto.response.StageResponseDTO;
 import com.ta.managementproject.entity.Project;
 import com.ta.managementproject.entity.Stage;
-import com.ta.managementproject.entity.Task;
 import com.ta.managementproject.entity.User;
-import com.ta.managementproject.enums.Role;
+import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.repository.*;
 import com.ta.managementproject.security.util.JwtUtils;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
-import com.ta.managementproject.service.task.TaskService;
 import com.ta.managementproject.service.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -23,8 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -32,13 +31,11 @@ public class StageServiceImpl implements StageService{
 
     private final StageDb stageDb;
     private final HttpServletRequest request;
-    private final JwtUtils jwtUtils;
     private final UserDb userDb;
     private final ProjectDb projectDb;
     private final TaskDb taskDb;
     private final UserService userService;
     private final SubTaskDb subTaskDb;
-    private final TaskService taskService;
     private final UtilService utilService;
     private final AuthService authService;
     private final StageDbWithDsl stageDbWithDsl;
@@ -46,85 +43,96 @@ public class StageServiceImpl implements StageService{
     public StageServiceImpl(
             StageDb stageDb,
             HttpServletRequest request,
-            JwtUtils jwtUtils,
             UserDb userDb,
             ProjectDb projectDb,
             TaskDb taskDb,
             UserService userService,
             SubTaskDb subTaskDb,
-            TaskService taskService,
             UtilService utilService,
             AuthService authService,
             StageDbWithDsl stageDbWithDsl
     ) {
         this.stageDb = stageDb;
         this.request = request;
-        this.jwtUtils = jwtUtils;
         this.userDb = userDb;
         this.projectDb = projectDb;
         this.taskDb = taskDb;
         this.userService = userService;
         this.subTaskDb = subTaskDb;
-        this.taskService = taskService;
         this.utilService = utilService;
         this.authService = authService;
         this.stageDbWithDsl = stageDbWithDsl;
     }
 
-    @Override
-    public ResponseEntity<?> getAllStage(String projectId) {
-        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+    @Override // Total CYC: 9, LOC: 52
+    public ResponseEntity<?> getAllStage(String projectId) {  // CYC: 1, LOC: 8
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
 
-        Project project = authService.validateProject(projectId);
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
-        authService.validateManagerAndMemberAccess(project, user.getUsername());
+        authService.validateManagerAndMemberAccess(project, username); // CYC: 3, LOC: 10
 
-        String username = jwtUtils.getUserNameFromRequest(request);
+        List<StageResponseDTO> stageList = stageDbWithDsl.findAll(projectId); // CYC: 1, LOC: 14
 
-        List<StageResponseDTO> stageList =
-                Role.valueOf(user.getRole().getName()) == Role.PROJECT_MANAGER ?
-                stageDbWithDsl.findAll(username, null, projectId) :
-                stageDbWithDsl.findAll(null, username, projectId);
-
-        List<StageResponseDTO> stageListWithSummary = new ArrayList<>();
-
-        for (StageResponseDTO stage: stageList){
-            stageListWithSummary.add(assignProgressToStage(stage, getStageStatistics(stage.getStageId())));
-        }
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", stageListWithSummary);
+        // CYC: 1, LOC: 9
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", stageList);
     }
 
-    @Override
-    public ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO) {
-        String username = jwtUtils.getUserNameFromRequest(request);
+    @Override // Total CYC: 8, LOC: 47
+    public ResponseEntity<?> getStage(String stageId){ // CYC: 1, LOC: 17
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
 
-        Project project = authService.validateProject(projectId);
+        Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8
 
-        authService.validateManagerAccess(project, username);
-        authService.validateProjectCancellation(project);
+        authService.validateManagerAndMemberAccess(stage.getProject(), username); // CYC: 3, LOC: 10
+
+        StageDetailResponseDTO responseDTO = StageDetailResponseDTO.builder()
+                .stageName(stage.getStageName())
+                .order(stage.getOrder())
+                .stageId(stage.getStageId())
+                .finishedTask(stage.getFinishedTask())
+                .todoTask(stage.getTodoTask())
+                .inProgressTask(stage.getInProgressTask())
+                .totalTask(stage.getTotalTask())
+                .progress(stage.getProgress())
+                .build();
+
+        // CYC: 1, LOC: 9
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO);
+    }
+
+    @Override // Total CYC: 9, LOC: 49
+    @Transactional
+    public ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 1, LOC: 17
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
+
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
+
+        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6
+        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
 
         Stage newStage = Stage.builder()
                 .stageName(requestDTO.getStageName())
                 .description(requestDTO.getDescription())
                 .createdAt(Instant.now())
-                .order((int) (long) stageDbWithDsl.totalStageByProject(projectId) + 1)
+                .order(stageDb.getTotalStage(projectId) + 1)
                 .project(project)
                 .build();
 
         stageDb.save(newStage);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "New stage has been added!"));
     }
 
-    @Override
-    public ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO) {
-        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
+    @Override // Total CYC: 11, LOC: 46
+    public ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 3, LOC: 14
+        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
 
-        Stage stage = authService.validateStage(stageId);
+        Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8
 
-        authService.validateManagerAccess(stage.getProject(), user.getUsername());
-        authService.validateProjectCancellation(stage.getProject());
+        authService.validateManagerAccess(stage.getProject(), user.getUsername()); // CYC: 2, LOC: 6
+        authService.validateProjectCancellation(stage.getProject()); // CYC: 2, LOC: 6
 
         stageDb.save(
                 stage.toBuilder()
@@ -133,105 +141,60 @@ public class StageServiceImpl implements StageService{
                         .build()
         );
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK,"SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
-        }
+    }
 
-    @Override
+    @Override // Total CYC: 9, LOC: 54
     @Transactional
-    public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) {
-        User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
-        Project project = authService.validateProject(projectId);
+    public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) { // CYC: 3, LOC: 22
+        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
+        int totalStage = project.getStageList().size();
 
-        authService.validateManagerAccess(project, user.getUsername());
-        authService.validateProjectCancellation(project);
+        authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6
+        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
 
         Stage stage = stageDb.findByStageId(requestDTO.getId());
 
-        if (stage.getOrder() > requestDTO.getOrder()){
-            stageDb.updateStageOrderAbove(projectId, requestDTO.getOrder() - 1, stage.getOrder());
-        }else if (stage.getOrder() < requestDTO.getOrder()){
-            stageDb.updateStageOrderBelow(projectId, requestDTO.getOrder(), stage.getOrder() + 1);
+        int boundedOrder = Math.max(1, Math.min(totalStage, requestDTO.getOrder()));
+
+        if (Objects.equals(stage.getOrder(), boundedOrder)) {
+            throw new ConflictException("Task is already in the requested position!");
         }
 
-        stage.setOrder(requestDTO.getOrder());
+        if (stage.getOrder() > boundedOrder){
+            stageDb.updateStageOrderAbove(projectId, boundedOrder, stage.getOrder() - 1);
+        }else {
+            stageDb.updateStageOrderBelow(projectId, boundedOrder + 1, stage.getOrder());
+        }
+
+        stage.setOrder(boundedOrder);
         stageDb.save(stage);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
     }
 
-    @Override
+    @Override // Total CYC: 10, LOC: 47
     @Transactional
-    public ResponseEntity<?> deleteStageById(String projectId, String stageId) {
-            User user = userDb.findByUsername(jwtUtils.getUserNameFromRequest(request));
-            Project project = authService.validateProject(projectId);
+    public ResponseEntity<?> deleteStageById(String projectId, String stageId) { // CYC: 2, LOC: 15
+            User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
+            Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
-            authService.validateManagerAccess(project, user.getUsername());
-            authService.validateProjectCancellation(project);
+            authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6
+            authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
 
             Stage stage = stageDb.findByStageId(stageId);
             Integer order = stage.getOrder();
 
-            if (!stage.getTaskList().isEmpty()){
-                for (Task task: stage.getTaskList()){
-                    taskService.deleteTaskById(stageId, task.getTaskId());
-                }
-            }
-            stageDb.delete(stageDb.findByStageId(stageId));
+            stageDb.softDeleteSubTaskByStageId(stageId);
+            stageDb.softDeleteTaskByStageId(stageId);
+
+            stageDb.delete(stage);
             stageDb.updateStageOrderAfterDelete(projectId, order);
 
+            // CYC: 1, LOC: 9
             return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
-    }
-
-    public ProgressResponseDTO getStageStatistics(String stageId) {
-        String username = jwtUtils.getUserNameFromRequest(request);
-        Stage stage = authService.validateStage(stageId);
-
-        Project project = stage.getProject();
-        authService.validateManagerAndMemberAccess(project, username);
-
-        ProgressResponseDTO responseDTO = new ProgressResponseDTO();
-
-        // Jika task memiliki subtask, akumulasi task berdasarkan subtask
-        Long totalFinishedTask = 0L;
-        Long totalTask = 0L;
-        Long totalTodoTask = 0L;
-        Long totalInProgressTask = 0L;
-
-        for (Task t: stage.getTaskList()){
-            if (t.getSubTaskList().isEmpty()){
-                ProgressResponseDTO progressResponseDTO = subTaskDb.getSubTaskSummary(t.getTaskId());
-                totalFinishedTask += progressResponseDTO.getFinishedTask();
-                totalTask += progressResponseDTO.getTotalTask();
-                totalTodoTask += progressResponseDTO.getTodoTask();
-                totalInProgressTask += progressResponseDTO.getInProgressTask();
-            }else{
-                switch (t.getStatus()) {
-                    case "TODO" -> totalTodoTask++;
-                    case "IN_PROGRESS" -> totalInProgressTask++;
-                    default -> totalFinishedTask++;
-                }
-
-                totalTask++;
-            }
-        }
-
-        responseDTO.setTotalTask(totalTask);
-        responseDTO.setFinishedTask(totalFinishedTask);
-        responseDTO.setTodoTask(totalTodoTask);
-        responseDTO.setInProgressTask(totalInProgressTask);
-
-        responseDTO.setProgress(totalTask == 0 ? 0.00 : (totalFinishedTask * 1.0 / totalTask * 100));
-
-        return responseDTO;
-    }
-
-    private StageResponseDTO assignProgressToStage(StageResponseDTO stage, ProgressResponseDTO progress){
-        return stage.toBuilder()
-                .progress(progress.getProgress())
-                .finishedTask(progress.getFinishedTask())
-                .todoTask(progress.getTodoTask())
-                .inProgressTask(progress.getInProgressTask())
-                .totalTask(progress.getTotalTask())
-                .build();
     }
 }

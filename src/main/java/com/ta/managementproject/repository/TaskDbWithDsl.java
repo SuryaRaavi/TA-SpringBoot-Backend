@@ -30,7 +30,7 @@ public class TaskDbWithDsl {
     private static List<String> SORTING_COLUMNS = List.of
             ("taskName", "order", "createdAt", "updatedAt", "dueDate", "priority");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) {
+    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 11, LOC: 32
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -77,7 +77,7 @@ public class TaskDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter(
+    private BooleanBuilder buildDynamicFilter( // CYC: 7, LOC: 38
             String stageId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -124,7 +124,8 @@ public class TaskDbWithDsl {
         return builder;
     }
 
-    public Page<TaskResponseDTO> findAll(
+    // Total CYC: 19, LOC: 110
+    public Page<TaskResponseDTO> findAll( // CYC: 2, LOC: 40
             String stageId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -134,9 +135,9 @@ public class TaskDbWithDsl {
             String keyword,
             Pageable pageable
     ){
-        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // // CYC: 11, LOC: 32
         BooleanBuilder predicate = buildDynamicFilter
-                (stageId, dueDate, createdAt, updatedAt, priority, order, keyword);
+                (stageId, dueDate, createdAt, updatedAt, priority, order, keyword); // CYC: 7, LOC: 38
 
         List<TaskResponseDTO> results = queryFactory
                 .select(Projections.constructor(

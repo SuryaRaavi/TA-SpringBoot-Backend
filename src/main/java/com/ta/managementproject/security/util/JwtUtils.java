@@ -10,6 +10,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -26,7 +27,7 @@ public class JwtUtils {
     @Value("${k3.app.jwtExpirationMs}")
     private long jwtExpirationMs;
 //    private long jwtExpirationMs = 86400000;
-    public String generateJwtToken(String username, String role) {
+    public String generateJwtToken(String username, String role) { // CYC: 1, LOC: 9
         return Jwts.builder()
                 .subject(username)
                 .claim("role", role)
@@ -36,6 +37,11 @@ public class JwtUtils {
                 .compact();
     }
 
+    public static String getCurrentUsername(){ // CYC: 1, LOC: 3
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
+    // CYC: 3, LOC: 10
     public String getUserNameFromRequest(HttpServletRequest request) {
         String headerAuth = request.getHeader("Authorization");
 
@@ -48,21 +54,6 @@ public class JwtUtils {
         JwtParser jwtParser = Jwts.parser().verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes())).build();
         Claims claims = jwtParser.parse(token).accept(Jws.CLAIMS).getPayload();
         return claims.getSubject();
-    }
-
-    public Role getUserRoleFromJwtToken(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-
-        String token = "";
-
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
-            token = headerAuth.substring(7);
-        }
-
-
-        JwtParser jwtParser = Jwts.parser().verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes())).build();
-        Claims claims = jwtParser.parse(token).accept(Jws.CLAIMS).getPayload();
-        return Role.valueOf(claims.get("role", String.class));
     }
 
     public boolean validateJwtToken(String authToken) {

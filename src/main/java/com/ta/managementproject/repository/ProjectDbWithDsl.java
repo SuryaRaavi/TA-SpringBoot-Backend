@@ -36,7 +36,7 @@ public class ProjectDbWithDsl {
 
     private static List<String> SORTING_COLUMNS = List.of("projectName", "startDate", "endDate", "createdAt", "updatedAt");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) {
+    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -79,7 +79,7 @@ public class ProjectDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter(
+    private BooleanBuilder buildDynamicFilter( // CYC: 7, LOC: 39
             String pmUsername,
             String memberUsername,
             LocalDate startDate,
@@ -126,6 +126,7 @@ public class ProjectDbWithDsl {
         return builder;
     }
 
+    // CYC: 19, LOC: 112
     public Page<ProjectResponseDTO> findAll(
             String pmUsername,
             String memberUsername,
@@ -136,8 +137,8 @@ public class ProjectDbWithDsl {
             String keyword,
             Pageable pageable
     ){
-        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
-        BooleanBuilder predicate = buildDynamicFilter(pmUsername, memberUsername, startDate, endDate, createdAt, updatedAt, keyword);
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29
+        BooleanBuilder predicate = buildDynamicFilter(pmUsername, memberUsername, startDate, endDate, createdAt, updatedAt, keyword); // CYC: 7, LOC: 39
 
         List<ProjectResponseDTO> results = queryFactory
                 .select(Projections.constructor(
@@ -150,12 +151,6 @@ public class ProjectDbWithDsl {
                         project.endDate,
                         project.createdAt,
                         project.updatedAt,
-                        Expressions.nullExpression(String.class),
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Long.class),
-                        Expressions.nullExpression(Double.class),
                         project.isCancelled
                 ))
                 .from(project)

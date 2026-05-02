@@ -3,6 +3,7 @@ package com.ta.managementproject.service.task;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Objects;
 
 import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.repository.*;
@@ -36,7 +37,6 @@ public class TaskServiceImpl implements TaskService {
     private final TaskDb taskDb;
     private final ProjectDb projectDb;
     private final StageDb stageDb;
-    private final JwtUtils jwtUtils;
     private final HttpServletRequest request;
     private final MemberInProjectDb memberInProjectDb;
     private final UserService userService;
@@ -51,7 +51,6 @@ public class TaskServiceImpl implements TaskService {
             TaskDb taskDb,
             ProjectDb projectDb,
             StageDb stageDb,
-            JwtUtils jwtUtils,
             HttpServletRequest request,
             MemberInProjectDb memberInProjectDb,
             UserService userService,
@@ -59,13 +58,13 @@ public class TaskServiceImpl implements TaskService {
             AuthService authService,
             UtilService utilService,
             TaskDbWithDsl taskDbWithDsl
+
     ) {
         this.projectManagerDb = projectManagerDb;
         this.projectMemberDb = projectMemberDb;
         this.taskDb = taskDb;
         this.projectDb = projectDb;
         this.stageDb = stageDb;
-        this.jwtUtils = jwtUtils;
         this.request = request;
         this.memberInProjectDb = memberInProjectDb;
         this.userService = userService;
@@ -74,14 +73,8 @@ public class TaskServiceImpl implements TaskService {
         this.utilService = utilService;
         this.taskDbWithDsl = taskDbWithDsl;
     }
-    
-    private String getUsernameFromToken() {
 
-        return jwtUtils.getUserNameFromRequest(request);
-
-    }
-
-    @Override
+    @Override // Total CYC: 26, LOC:  140
     public ResponseEntity<?> getAllTask(
             Pageable pageable,
             String stageId,
@@ -92,10 +85,12 @@ public class TaskServiceImpl implements TaskService {
             Integer order,
             String keyword
     ) {
-        Stage stage = authService.validateStage(stageId);
-        authService.validateManagerAndMemberAccess(stage.getProject(), getUsernameFromToken());
+        Stage stage = authService.validateStage(stageId);  // CYC: 2, LOC: 8
+        authService.validateManagerAndMemberAccess(stage.getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 1, LOC: 3
+        // CYC: 3, LOC: 10
 
-        Page<TaskResponseDTO> tasks = taskDbWithDsl.findAll(
+        Page<TaskResponseDTO> tasks = taskDbWithDsl.findAll( // CYC: 19, LOC: 110
                 stageId,
                 dueDate,
                 createdAt,
@@ -106,15 +101,18 @@ public class TaskServiceImpl implements TaskService {
                 pageable
         );
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", tasks);
     }
 
-    @Override
+    @Override // Total CYC: 13, LOC: 88
     @Transactional
-    public ResponseEntity<?> addNewTask(String stageId, CreateUpdateTaskRequestDTO requestDTO) {
-            Stage stage = authService.validateStage(stageId);
-            authService.validateManagerAccess(stage.getProject(), getUsernameFromToken());
-            authService.validateProjectCancellation(stage.getProject());
+    public ResponseEntity<?> addNewTask(String stageId, CreateUpdateTaskRequestDTO requestDTO) { // CYC: 1, LOC: 20
+            Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8
+            authService.validateManagerAccess(stage.getProject(), JwtUtils.getCurrentUsername());
+            // CYC: 2, LOC: 6
+            // CYC: 1, LOC: 3
+            authService.validateProjectCancellation(stage.getProject()); // CYC: 2, LOC: 6
 
             Integer currentTotal = taskDb.getTotalTask(stageId);
 
@@ -131,16 +129,21 @@ public class TaskServiceImpl implements TaskService {
                     .build();
 
             taskDb.save(newTask);
+            utilService.updateStageSummary(stageId); // CYC: 2, LOC: 18
+            utilService.updateProjectSummary(stage.getProject().getProjectId()); // CYC: 2, LOC: 18
 
+            // CYC: 1, LOC: 9
             return utilService.buildResponse(HttpStatus.CREATED, "Task created successfully", new CrudResponseDTO(newTask.getTaskId(), Instant.now().toString()));
     }
 
-    @Override
-    public ResponseEntity<?> updateTask(String taskId, CreateUpdateTaskRequestDTO requestDTO) {
-        Task task = authService.validateTask(taskId);
+    @Override // Total CYC: 8, LOC: 45
+    public ResponseEntity<?> updateTask(String taskId, CreateUpdateTaskRequestDTO requestDTO) { // CYC: 1, LOC: 13
+        Task task = authService.validateTask(taskId);  // CYC: 2, LOC: 8
 
-        authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromToken());
-        authService.validateProjectCancellation(task.getStage().getProject());
+        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 2, LOC: 6
+        // CYC: 1, LOC: 3
+        authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6
 
         task.setTaskName(requestDTO.getTaskName());
         task.setDescription(requestDTO.getDescription());
@@ -150,75 +153,101 @@ public class TaskServiceImpl implements TaskService {
 
         taskDb.save(task);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.CREATED, "Task updated successfully", new CrudResponseDTO(taskId, Instant.now().toString()));
       }
 
 
-    @Override
-    public ResponseEntity<?> getDetailTask(String taskId) {
-        Task task = authService.validateTask(taskId);
+    @Override // Total CYC: 9, LOC: 53
+    public ResponseEntity<?> getDetailTask(String taskId) { // CYC: 2, LOC: 23
+        Task task = authService.validateTask(taskId);  // CYC: 2, LOC: 8
 
-        authService.validateManagerAndMemberAccess(task.getStage().getProject(), getUsernameFromToken());
+        authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 1, LOC: 3
+        // CYC: 3, LOC: 10
 
-        TaskDetailResponseDTO response = new TaskDetailResponseDTO(
-                task.getTaskId(),
-                task.getTaskName(),
-                task.getDescription(),
-                task.getPriority(),
-                task.getLabel(),
-                task.getDueDate(),
-                task.getStatus(),
-                task.getProjectMember() != null ? task.getProjectMember().getFullName() : "Unassigned",
-                task.getCreatedAt()
-        );
+        TaskDetailResponseDTO response = new TaskDetailResponseDTO();
+        response.setTaskId(task.getTaskId());
+        response.setTaskName(task.getTaskName());
+        response.setProjectMemberName(task.getProjectMember() != null ? task.getProjectMember().getFullName() : "Unassigned");
+        response.setDescription(task.getDescription());
+        response.setDueDate(task.getDueDate());
+        response.setLabel(task.getLabel());
+        response.setPriority(task.getPriority());
+        response.setStatus(task.getStatus());
+        response.setCreatedAt(task.getCreatedAt());
+        response.setUpdatedAt(task.getUpdatedAt());
+        response.setFinishedTask(task.getFinishedTask());
+        response.setTodoTask(task.getTodoTask());
+        response.setInProgressTask(task.getInProgressTask());
+        response.setTotalTask(task.getTotalTask());
+        response.setProgress(task.getProgress());
+        response.setOrder(task.getOrder());
 
+
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", response);
     }
 
-    @Override
+    @Override // Total CYC: 14, LOC: 82
     @Transactional
-    public ResponseEntity<?> deleteTaskById(String stageId, String taskId) {
-            Task task = authService.validateTask(taskId);
-            authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromToken());
-            authService.validateProjectCancellation(task.getStage().getProject());
+    public ResponseEntity<?> deleteTaskById(String stageId, String taskId) { // CYC: 2, LOC: 14
+            Task task = authService.validateTask(taskId); // CYC: 2, LOC: 8
+            authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+            // CYC: 2, LOC: 6
+            // CYC: 1, LOC: 3
+            authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6
 
             Integer order = task.getOrder();
 
-            if (!task.getSubTaskList().isEmpty()){
-                subTaskDb.deleteAll(task.getSubTaskList());
-            }
+            taskDb.softDeleteSubTaskByTaskId(taskId);
+
             taskDb.deleteById(taskId);
             taskDb.updateTaskOrderAfterDelete(stageId, order);
+            utilService.updateStageSummary(stageId); // CYC: 2, LOC: 18
+            utilService.updateProjectSummary(task.getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
 
+            // CYC: 1, LOC: 9
             return utilService.buildResponse(HttpStatus.OK, "Tasks deleted successfully", null);
     }
 
-    @Override
+    @Override // Total CYC: 13, LOC: 61
     @Transactional
-    public ResponseEntity<?> reorderTask(String stageId, ReorderRequestDTO requestDTO) {
-        authService.validateStage(stageId);
-        Task task = authService.validateTask(requestDTO.getId());
+    public ResponseEntity<?> reorderTask(String stageId, ReorderRequestDTO requestDTO) { // CYC: 3, LOC: 21
+        authService.validateStage(stageId); // CYC: 2, LOC: 8
+        Task task = authService.validateTask(requestDTO.getId()); // CYC: 2, LOC: 8
+        int totalTask = task.getStage().getTaskList().size();
 
-        authService.validateManagerAccess(task.getStage().getProject(), getUsernameFromToken());
-        authService.validateProjectCancellation(task.getStage().getProject());
+        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername()); // CYC: 2, LOC: 6 // CYC: 1, LOC: 3
+        authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6
 
-        if (task.getOrder() > requestDTO.getOrder()){
-            taskDb.updateTaskOrderAbove(stageId, requestDTO.getOrder() - 1, task.getOrder());
-        }else if (task.getOrder() < requestDTO.getOrder()){
-            taskDb.updateTaskOrderBelow(stageId, requestDTO.getOrder(), task.getOrder() + 1);
+        Integer boundedOrder = Math.max(1, Math.min(totalTask, requestDTO.getOrder()));
+
+        if (Objects.equals(task.getOrder(), boundedOrder)) {
+            throw new ConflictException("Task is already in the requested position!");
         }
 
-        task.setOrder(requestDTO.getOrder());
+        if (task.getOrder() > boundedOrder){
+            taskDb.updateTaskOrderAbove(stageId, boundedOrder, task.getOrder() - 1);
+        }else {
+            taskDb.updateTaskOrderBelow(stageId, boundedOrder + 1, task.getOrder() + 1);
+        }
+
+        task.setOrder(boundedOrder);
         taskDb.save(task);
 
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "Tasks reordered successfully", null);
     }
 
-    @Override
-    public ResponseEntity<?> updateTaskStatus(String taskId, CreateUpdateTaskRequestDTO requestDTO) {
-        Task task = authService.validateTask(taskId);
-        authService.validateManagerAndMemberAccess(task.getStage().getProject(), getUsernameFromToken());
-        authService.validateProjectCancellation(task.getStage().getProject());
+    @Override // Total CYC: 13, LOC: 90
+    @Transactional
+    public ResponseEntity<?> updateTaskStatus(String taskId, CreateUpdateTaskRequestDTO requestDTO) { // CYC: 2, LOC: 15
+        Task task = authService.validateTask(taskId);  // CYC: 2, LOC: 8
+        authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        // CYC: 1, LOC: 3
+        // CYC: 3, LOC: 10
+        authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6
 
         if (!task.getSubTaskList().isEmpty()){
             throw new ConflictException("Status is automatically set based on sub task");
@@ -227,6 +256,11 @@ public class TaskServiceImpl implements TaskService {
         task.setStatus(requestDTO.getStatus());
         taskDb.save(task);
 
+        utilService.updateStageSummary(task.getStage().getStageId()); // CYC: 2, LOC: 18
+        utilService.updateProjectSummary(task.getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
+
+        // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "Task status updated successfully", new CrudResponseDTO(taskId, Instant.now().toString()));
     }
+
 }

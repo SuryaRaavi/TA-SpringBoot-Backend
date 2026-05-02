@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Date;
-
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthRestController {
@@ -19,8 +17,8 @@ public class AuthRestController {
     @Autowired
     private AuthService authService;
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequestDTO) throws Exception{
+    @PostMapping("/login") // CYC: 7, LOC: 49
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequestDTO) throws Exception{ // CYC: 1, LOC: 4
         return authService.doLogin(loginRequestDTO);
     }
 }

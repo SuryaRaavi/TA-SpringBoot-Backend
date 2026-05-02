@@ -20,9 +20,9 @@ public class SubTaskRestController {
     @Autowired
     private SubTaskService subTaskService;
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 27, LOC: 183
     @GetMapping("")
-    public ResponseEntity<?> getAllSubTask(
+    public ResponseEntity<?> getAllSubTask( // CYC: 1, LOC: 29
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
@@ -44,7 +44,7 @@ public class SubTaskRestController {
 
             @RequestParam(required = false) String keyword
     ){
-        return subTaskService.getAllSubTask(
+        return subTaskService.getAllSubTask( // CYC: 26, LOC: 154
                 taskId,
                 dueDate,
                 createdAt,
@@ -55,71 +55,71 @@ public class SubTaskRestController {
         );
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 19, LOC: 127
     @PostMapping("")
-    public ResponseEntity<?> addNewSubTask(
+    public ResponseEntity<?> addNewSubTask( // CYC: 1, LOC: 10
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
-        return subTaskService.addNewSubTask(taskId, requestDTO);
+        return subTaskService.addNewSubTask(taskId, requestDTO); // CYC: 18, LOC: 117
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 15, LOC: 56
     @PatchMapping("/{subTaskId}")
-    public ResponseEntity<?> updateSubTask(
+    public ResponseEntity<?> updateSubTask( // CYC: 1, LOC: 11
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @PathVariable String subTaskId,
             @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
-        return subTaskService.updateSubTask(subTaskId, requestDTO);
+        return subTaskService.updateSubTask(subTaskId, requestDTO); // CYC: 14, LOC: 45
     }
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 10, LOC: 56
     @GetMapping("/{subTaskId}")
-    public ResponseEntity<?> getDetailSubTask(
+    public ResponseEntity<?> getDetailSubTask( // CYC: 1, LOC: 10
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @PathVariable String subTaskId
     ){
-        return subTaskService.getDetailSubTask(subTaskId);
+        return subTaskService.getDetailSubTask(subTaskId); // CYC: 9, LOC: 46
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 14, LOC: 71
     @PatchMapping("/reorder")
-    public ResponseEntity<?> reorderTask(
+    public ResponseEntity<?> reorderTask( // CYC: 1, LOC: 10
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @RequestBody ReorderRequestDTO requestDTO
     ){
-        return subTaskService.reorderSubTask(taskId, requestDTO);
+        return subTaskService.reorderSubTask(taskId, requestDTO); // CYC: 13, LOC: 61
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 18, LOC: 117
     @DeleteMapping("/{subTaskId}")
-    public ResponseEntity<?> deleteSubTask(
+    public ResponseEntity<?> deleteSubTask( // CYC: 1, LOC: 10
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @PathVariable String subTaskId
     ){
-        return subTaskService.deleteSubTaskById(taskId, subTaskId);
+        return subTaskService.deleteSubTaskById(taskId, subTaskId); // CYC: 17, LOC: 107
     }
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 19, LOC: 121
     @PatchMapping("/update-status")
-    public ResponseEntity<?> updateSubTaskStatus(
+    public ResponseEntity<?> updateSubTaskStatus( // CYC: 1, LOC: 11
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @PathVariable String subTaskId,
             @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
-        return subTaskService.updateSubTaskStatus(subTaskId, requestDTO);
+        return subTaskService.updateSubTaskStatus(subTaskId, requestDTO); // CYC: 18, LOC: 110
     }
 }

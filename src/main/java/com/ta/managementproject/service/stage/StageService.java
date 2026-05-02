@@ -15,5 +15,6 @@ public interface StageService {
     ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO);
 
     ResponseEntity<?> deleteStageById(String projectId, String stageId);
-    ProgressResponseDTO getStageStatistics(String stageId);
+
+    ResponseEntity<?> getStage(String stageId);
 }

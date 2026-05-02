@@ -18,7 +18,7 @@ public class UserRestController {
     @Autowired
     private UserService userService;
 
-    @PostMapping("")
+    @PostMapping("") // CYC: 9, LOC: 61
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request, BindingResult bindingResult) throws Exception {
         return userService.addNewUser(request);
     }
