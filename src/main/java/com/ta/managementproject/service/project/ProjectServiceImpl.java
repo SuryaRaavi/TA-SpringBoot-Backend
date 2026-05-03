@@ -32,13 +32,11 @@ import java.util.*;
 @Transactional
 public class ProjectServiceImpl implements ProjectService {
     private final ProjectDb projectDb;
-    private final HttpServletRequest request;
     private final AuthService authService;
     private final ProjectManagerDb projectManagerDb;
     private final MemberInProjectDb memberInProjectDb;
     private final ProjectMemberDb projectMemberDb;
     private final UserDb userDb;
-
     private final UserService userService;
     private final UtilService utilService;
     private final ProjectDbWithDsl projectDbWithDsl;
@@ -47,19 +45,16 @@ public class ProjectServiceImpl implements ProjectService {
 
     public ProjectServiceImpl(
             ProjectDb projectDb,
-            HttpServletRequest request,
             AuthService authService,
             ProjectManagerDb projectManagerDb,
             MemberInProjectDb memberInProjectDb,
             ProjectMemberDb projectMemberDb,
             UserDb userDb,
-            StageService stageService,
             UserService userService,
             UtilService utilService,
             ProjectDbWithDsl projectDbWithDsl
     ) {
         this.projectDb = projectDb;
-        this.request = request;
         this.authService = authService;
         this.projectManagerDb = projectManagerDb;
         this.memberInProjectDb = memberInProjectDb;
@@ -111,10 +106,10 @@ public class ProjectServiceImpl implements ProjectService {
                         .createdAt(Instant.now())
                         .build();
 
-        projectDb.save(newProyek);
+        Project createdProject = projectDb.save(newProyek);
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.CREATED, "SUCCESS", new CrudResponseDTO("SUCCESS", "The project has been CREATED!"));
+        return utilService.buildResponse(HttpStatus.CREATED, "SUCCESS", assignToDto(createdProject));
     }
 
     @Override // Total CYC: 14, LOC: 47
@@ -131,7 +126,7 @@ public class ProjectServiceImpl implements ProjectService {
                 throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
             }
 
-            projectDb.save(
+            Project updatedProject = projectDb.save(
                     project.toBuilder()
                             .projectName(requestDTO.getProjectName() == null ? project.getProjectName() : requestDTO.getProjectName())
                             .description(requestDTO.getDescription() == null ? project.getDescription() : requestDTO.getDescription())
@@ -141,7 +136,7 @@ public class ProjectServiceImpl implements ProjectService {
             );
 
             // CYC: 1, LOC: 9
-            return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "The project has been UPDATED!"));
+            return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(updatedProject));
     }
 
     // Total CYC: 8, LOC: 47
@@ -153,25 +148,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         authService.validateManagerAndMemberAccess(project, user.getUsername()); // CYC: 3, LOC: 10
 
-        ProjectDetailResponseDTO responseDTO = ProjectDetailResponseDTO.builder()
-                .projectId(projectId)
-                .projectName(project.getProjectName())
-                .description(project.getDescription())
-                .fullNamePm(project.getProjectManager().getFullName())
-                .startDate(project.getStartDate())
-                .endDate(project.getEndDate())
-                .createdAt(project.getCreatedAt())
-                .updatedAt(project.getUpdatedAt())
-                .status(projectDb.getProjectStatus(projectId))
-                .finishedTask(project.getFinishedTask())
-                .todoTask(project.getTodoTask())
-                .inProgressTask(project.getInProgressTask())
-                .totalTask(project.getTotalTask())
-                .progress(project.getProgress())
-                .isCancelled(project.isCancelled())
-                .build();
-
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO); // CYC: 1, LOC: 9
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(project)); // CYC: 1, LOC: 9
     }
 
     @Override // Total CYC: 8, LOC: 38
@@ -261,9 +238,29 @@ public class ProjectServiceImpl implements ProjectService {
         String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
         authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6
 
-        projectDb.save(project.toBuilder().isCancelled(true).build());
+        Project cancelledProject = projectDb.save(project.toBuilder().isCancelled(true).build());
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("Project Code", project.getProjectId()));
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(cancelledProject));
+    }
+
+    private ProjectDetailResponseDTO assignToDto(Project project){
+        return ProjectDetailResponseDTO.builder()
+                .projectId(project.getProjectId())
+                .projectName(project.getProjectName())
+                .description(project.getDescription())
+                .fullNamePm(project.getProjectManager().getFullName())
+                .startDate(project.getStartDate())
+                .endDate(project.getEndDate())
+                .createdAt(project.getCreatedAt())
+                .updatedAt(project.getUpdatedAt())
+                .status(projectDb.getProjectStatus(project.getProjectId()))
+                .finishedTask(project.getFinishedTask())
+                .todoTask(project.getTodoTask())
+                .inProgressTask(project.getInProgressTask())
+                .totalTask(project.getTotalTask())
+                .progress(project.getProgress())
+                .isCancelled(project.isCancelled())
+                .build();
     }
 }

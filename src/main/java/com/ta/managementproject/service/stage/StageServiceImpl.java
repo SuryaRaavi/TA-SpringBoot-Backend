@@ -16,12 +16,15 @@ import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
 import com.ta.managementproject.service.user.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
@@ -65,14 +68,14 @@ public class StageServiceImpl implements StageService{
     }
 
     @Override // Total CYC: 9, LOC: 52
-    public ResponseEntity<?> getAllStage(String projectId) {  // CYC: 1, LOC: 8
+    public ResponseEntity<?> getAllStage(String projectId, Pageable pageable, LocalDate createdAt, LocalDate updatedAt, String keyword) {  // CYC: 1, LOC: 8
         String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
 
         Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
         authService.validateManagerAndMemberAccess(project, username); // CYC: 3, LOC: 10
 
-        List<StageResponseDTO> stageList = stageDbWithDsl.findAll(projectId); // CYC: 1, LOC: 14
+        Page<StageResponseDTO> stageList = stageDbWithDsl.findAll(projectId, createdAt, updatedAt, keyword, pageable); // CYC: 1, LOC: 14
 
         // CYC: 1, LOC: 9
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", stageList);
@@ -86,19 +89,8 @@ public class StageServiceImpl implements StageService{
 
         authService.validateManagerAndMemberAccess(stage.getProject(), username); // CYC: 3, LOC: 10
 
-        StageDetailResponseDTO responseDTO = StageDetailResponseDTO.builder()
-                .stageName(stage.getStageName())
-                .order(stage.getOrder())
-                .stageId(stage.getStageId())
-                .finishedTask(stage.getFinishedTask())
-                .todoTask(stage.getTodoTask())
-                .inProgressTask(stage.getInProgressTask())
-                .totalTask(stage.getTotalTask())
-                .progress(stage.getProgress())
-                .build();
-
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", responseDTO);
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(stage));
     }
 
     @Override // Total CYC: 9, LOC: 49
@@ -119,10 +111,10 @@ public class StageServiceImpl implements StageService{
                 .project(project)
                 .build();
 
-        stageDb.save(newStage);
+        Stage createdStage = stageDb.save(newStage);
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "New stage has been added!"));
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(createdStage));
     }
 
     @Override // Total CYC: 11, LOC: 46
@@ -134,7 +126,7 @@ public class StageServiceImpl implements StageService{
         authService.validateManagerAccess(stage.getProject(), user.getUsername()); // CYC: 2, LOC: 6
         authService.validateProjectCancellation(stage.getProject()); // CYC: 2, LOC: 6
 
-        stageDb.save(
+        Stage updatedStage = stageDb.save(
                 stage.toBuilder()
                         .stageName(requestDTO.getStageName() == null ? stage.getStageName() : requestDTO.getStageName())
                         .description(requestDTO.getDescription() == null ? stage.getDescription() : requestDTO.getDescription())
@@ -142,7 +134,7 @@ public class StageServiceImpl implements StageService{
         );
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK,"SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
+        return utilService.buildResponse(HttpStatus.OK,"SUCCESS", assignToDto(updatedStage));
     }
 
     @Override // Total CYC: 9, LOC: 54
@@ -170,15 +162,15 @@ public class StageServiceImpl implements StageService{
         }
 
         stage.setOrder(boundedOrder);
-        stageDb.save(stage);
+        Stage reorderedStage = stageDb.save(stage);
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been updated!"));
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(reorderedStage));
     }
 
-    @Override // Total CYC: 10, LOC: 47
+    @Override // Total CYC: 12, LOC: 66
     @Transactional
-    public ResponseEntity<?> deleteStageById(String projectId, String stageId) { // CYC: 2, LOC: 15
+    public ResponseEntity<?> deleteStageById(String projectId, String stageId) { // CYC: 2, LOC: 16
             User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
             Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
 
@@ -193,8 +185,25 @@ public class StageServiceImpl implements StageService{
 
             stageDb.delete(stage);
             stageDb.updateStageOrderAfterDelete(projectId, order);
+            utilService.updateProjectSummary(projectId); // CYC: 2, LOC: 18
 
             // CYC: 1, LOC: 9
             return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
+    }
+
+    private StageDetailResponseDTO assignToDto(Stage stage){
+        return StageDetailResponseDTO.builder()
+                .stageName(stage.getStageName())
+                .order(stage.getOrder())
+                .stageId(stage.getStageId())
+                .finishedTask(stage.getFinishedTask())
+                .todoTask(stage.getTodoTask())
+                .inProgressTask(stage.getInProgressTask())
+                .totalTask(stage.getTotalTask())
+                .progress(stage.getProgress())
+                .description(stage.getDescription())
+                .projectId(stage.getProject().getProjectId())
+                .isDeleted(stage.isDeleted())
+                .build();
     }
 }

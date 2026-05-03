@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 import java.util.Date;
@@ -42,7 +43,8 @@ public class UtilService {
         return new ResponseEntity<>(res, status);
     }
 
-    // CYC: 2, LOC: 18
+    // CYC: 2, LOC: 19
+    @Transactional
     public void updateProjectSummary(String projectId) {
         Project project = projectDb.findByProjectId(projectId);
         ProgressResponseDTO fromSubTasks = projectDb.getSummaryFromSubTasks(projectId);
@@ -51,7 +53,7 @@ public class UtilService {
         long totalTask = fromSubTasks.getTotalTask() + fromTasks.getTotalTask();
         long totalFinishedTask = fromSubTasks.getFinishedTask() + fromTasks.getFinishedTask();
         long totalInProgressTask = fromSubTasks.getInProgressTask() + fromTasks.getInProgressTask();
-        long totalToDoTask = fromSubTasks.getTodoTask() + fromSubTasks.getTodoTask();
+        long totalToDoTask = fromSubTasks.getTodoTask() + fromTasks.getTodoTask();
 
         projectDb.save(project.toBuilder()
                 .finishedTask(totalFinishedTask)
@@ -63,7 +65,8 @@ public class UtilService {
         );
     }
 
-    // CYC: 2, LOC: 18
+    // CYC: 2, LOC: 19
+    @Transactional
     public void updateStageSummary(String stageId) {
         Stage stage = stageDb.findByStageId(stageId);
         ProgressResponseDTO fromSubTasks = stageDb.getSummaryFromSubTasks(stageId);
@@ -72,7 +75,7 @@ public class UtilService {
         long totalTask = fromSubTasks.getTotalTask() + fromTasks.getTotalTask();
         long totalFinishedTask = fromSubTasks.getFinishedTask() + fromTasks.getFinishedTask();
         long totalInProgressTask = fromSubTasks.getInProgressTask() + fromTasks.getInProgressTask();
-        long totalToDoTask = fromSubTasks.getTodoTask() + fromSubTasks.getTodoTask();
+        long totalToDoTask = fromSubTasks.getTodoTask() + fromTasks.getTodoTask();
 
         stageDb.save(stage.toBuilder()
                 .finishedTask(totalFinishedTask)
@@ -84,7 +87,8 @@ public class UtilService {
         );
     }
 
-    // Total CYC: 4, LOC: 25
+    // Total CYC: 4, LOC: 26
+    @Transactional
     public void updateTaskStatusAndSummary(String taskId){
         Task task = taskDb.findByTaskId(taskId);
         String status = "";

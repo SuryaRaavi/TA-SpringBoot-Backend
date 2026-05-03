@@ -128,12 +128,12 @@ public class TaskServiceImpl implements TaskService {
                     .isDeleted(false)
                     .build();
 
-            taskDb.save(newTask);
+            Task createdTask = taskDb.save(newTask);
             utilService.updateStageSummary(stageId); // CYC: 2, LOC: 18
             utilService.updateProjectSummary(stage.getProject().getProjectId()); // CYC: 2, LOC: 18
 
             // CYC: 1, LOC: 9
-            return utilService.buildResponse(HttpStatus.CREATED, "Task created successfully", new CrudResponseDTO(newTask.getTaskId(), Instant.now().toString()));
+            return utilService.buildResponse(HttpStatus.CREATED, "Task created successfully", assignToDto(createdTask));
     }
 
     @Override // Total CYC: 8, LOC: 45
@@ -151,10 +151,10 @@ public class TaskServiceImpl implements TaskService {
         task.setDueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant());
         task.setProjectMember(requestDTO.getProjectMember());
 
-        taskDb.save(task);
+        Task updatedTask = taskDb.save(task);
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.CREATED, "Task updated successfully", new CrudResponseDTO(taskId, Instant.now().toString()));
+        return utilService.buildResponse(HttpStatus.CREATED, "Task updated successfully", assignToDto(updatedTask));
       }
 
 
@@ -166,27 +166,8 @@ public class TaskServiceImpl implements TaskService {
         // CYC: 1, LOC: 3
         // CYC: 3, LOC: 10
 
-        TaskDetailResponseDTO response = new TaskDetailResponseDTO();
-        response.setTaskId(task.getTaskId());
-        response.setTaskName(task.getTaskName());
-        response.setProjectMemberName(task.getProjectMember() != null ? task.getProjectMember().getFullName() : "Unassigned");
-        response.setDescription(task.getDescription());
-        response.setDueDate(task.getDueDate());
-        response.setLabel(task.getLabel());
-        response.setPriority(task.getPriority());
-        response.setStatus(task.getStatus());
-        response.setCreatedAt(task.getCreatedAt());
-        response.setUpdatedAt(task.getUpdatedAt());
-        response.setFinishedTask(task.getFinishedTask());
-        response.setTodoTask(task.getTodoTask());
-        response.setInProgressTask(task.getInProgressTask());
-        response.setTotalTask(task.getTotalTask());
-        response.setProgress(task.getProgress());
-        response.setOrder(task.getOrder());
-
-
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", response);
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(task));
     }
 
     @Override // Total CYC: 14, LOC: 82
@@ -234,10 +215,10 @@ public class TaskServiceImpl implements TaskService {
         }
 
         task.setOrder(boundedOrder);
-        taskDb.save(task);
+        Task reordedTask = taskDb.save(task);
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "Tasks reordered successfully", null);
+        return utilService.buildResponse(HttpStatus.OK, "Tasks reordered successfully", assignToDto(reordedTask));
     }
 
     @Override // Total CYC: 13, LOC: 90
@@ -254,13 +235,36 @@ public class TaskServiceImpl implements TaskService {
         }
 
         task.setStatus(requestDTO.getStatus());
-        taskDb.save(task);
+        Task updatedTask = taskDb.save(task);
 
         utilService.updateStageSummary(task.getStage().getStageId()); // CYC: 2, LOC: 18
         utilService.updateProjectSummary(task.getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "Task status updated successfully", new CrudResponseDTO(taskId, Instant.now().toString()));
+        return utilService.buildResponse(HttpStatus.OK, "Task status updated successfully", assignToDto(updatedTask));
+    }
+
+    private TaskDetailResponseDTO assignToDto(Task task){
+        return TaskDetailResponseDTO.builder()
+                .taskId(task.getTaskId())
+                .taskName(task.getTaskName())
+                .assigneeId(task.getProjectMember() != null ? task.getProjectMember().getUsername() : "Unassigned")
+                .description(task.getDescription())
+                .dueDate(task.getDueDate())
+                .label(task.getLabel())
+                .priority(task.getPriority())
+                .status(task.getStatus())
+                .createdAt(task.getCreatedAt())
+                .updatedAt(task.getUpdatedAt())
+                .finishedTask(task.getFinishedTask())
+                .todoTask(task.getTodoTask())
+                .inProgressTask(task.getInProgressTask())
+                .totalTask(task.getTotalTask())
+                .progress(task.getProgress())
+                .order(task.getOrder())
+                .stageId(task.getStage().getStageId())
+                .isDeleted(task.isDeleted())
+                .build();
     }
 
 }

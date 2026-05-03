@@ -14,7 +14,7 @@ public interface ProjectDb extends JpaRepository<Project, String>{
 
     Project findByJoinCode(String joinCode);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
                 Stage s  
@@ -23,7 +23,7 @@ public interface ProjectDb extends JpaRepository<Project, String>{
     """)
     int softDeleteStageByProjectId(@Param("projectId") String projectId);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
                 Task t  
@@ -32,7 +32,7 @@ public interface ProjectDb extends JpaRepository<Project, String>{
     """)
     int softDeleteTaskByProjectId(@Param("projectId") String projectId);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
                 SubTask st  

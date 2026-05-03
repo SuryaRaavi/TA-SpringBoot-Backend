@@ -17,7 +17,7 @@ public interface StageDb extends JpaRepository<Stage, String> {
     @Query("SELECT COUNT(s) FROM Stage s WHERE s.project.projectId = :projectId")
     int getTotalStage(@Param("projectId") String projectId);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              Stage s 
@@ -32,7 +32,7 @@ public interface StageDb extends JpaRepository<Stage, String> {
             @Param("secondOrder") Integer secondOrder
     );
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              Stage s 
@@ -47,7 +47,7 @@ public interface StageDb extends JpaRepository<Stage, String> {
             @Param("secondOrder") Integer secondOrder
     );
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             """
             UPDATE 
@@ -58,7 +58,7 @@ public interface StageDb extends JpaRepository<Stage, String> {
     """)
     int updateStageOrderAfterDelete(@Param("projectId") String projectId, @Param("order") Integer order);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
                 Task t  
@@ -67,7 +67,7 @@ public interface StageDb extends JpaRepository<Stage, String> {
     """)
     int softDeleteTaskByStageId(@Param("stageId") String stageId);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
                 SubTask st  

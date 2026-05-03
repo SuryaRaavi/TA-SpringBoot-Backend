@@ -138,10 +138,13 @@ public class SubTaskDbWithDsl {
                         subTask.dueDate,
                         subTask.status,
                         subTask.label,
-                        subTask.projectMember.fullName,
+                        subTask.projectMember.username,
                         subTask.createdAt,
                         subTask.updatedAt,
-                        subTask.order
+                        subTask.order,
+                        subTask.task.taskId,
+                        subTask.description,
+                        subTask.isDeleted
                 ))
                 .from(subTask)
                 .where(predicate)

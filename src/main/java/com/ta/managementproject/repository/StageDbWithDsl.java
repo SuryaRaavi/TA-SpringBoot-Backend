@@ -1,13 +1,24 @@
 package com.ta.managementproject.repository;
 
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Order;
+import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ta.managementproject.dto.response.StageResponseDTO;
 import com.ta.managementproject.entity.QStage;
+import com.ta.managementproject.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -15,22 +26,104 @@ import java.util.List;
 public class StageDbWithDsl {
     private final JPAQueryFactory queryFactory;
     private final QStage stage = QStage.stage;
+    private static List<String> SORTING_COLUMNS = List.of("stageName", "order", "createdAt", "updatedAt");
 
-    public List<StageResponseDTO> findAll(String projectId) { // CYC: 1, LOC: 14
+    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29
+        List<OrderSpecifier<?>> orders = new ArrayList<>();
 
-        BooleanBuilder predicate = new BooleanBuilder();
+        for (Sort.Order order : pageable.getSort()) {
 
-        predicate.and(stage.project.projectId.eq(projectId));
+            String property = order.getProperty();
 
-        return queryFactory
+            // 🔒 whitelist supaya aman
+            if (!SORTING_COLUMNS.contains(property)) throw new BadRequestException("Sorting column is not valid!");
+
+            Order direction = order.isAscending() ? Order.ASC : Order.DESC;
+
+            switch (property) {
+                case "stageName":
+                    orders.add(new OrderSpecifier<>(direction, stage.stageName));
+                    break;
+
+                case "order":
+                    orders.add(new OrderSpecifier<>(direction, stage.order));
+                    break;
+
+                case "createdAt":
+                    orders.add(new OrderSpecifier<>(direction, stage.createdAt));
+                    break;
+
+                case "updatedAt":
+                    orders.add(new OrderSpecifier<>(direction, stage.updatedAt));
+                    break;
+            }
+        }
+
+        // 🔥 default sorting kalau kosong
+        if (orders.isEmpty()) {
+            orders.add(stage.order.asc());
+        }
+
+        return orders.toArray(new OrderSpecifier[0]);
+    }
+
+    private BooleanBuilder buildDynamicFilter(
+       String projectId,
+       LocalDate createdAt,
+       LocalDate updatedAt,
+       String keyword
+    ){
+        BooleanBuilder builder = new BooleanBuilder();
+        builder.and(stage.project.projectId.eq(projectId));
+
+        if (createdAt != null){
+            Instant start = createdAt.atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant end = createdAt.atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
+            builder.and(stage.createdAt.between(start, end));
+        }
+
+        if (updatedAt != null){
+            Instant start = updatedAt.atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant end = updatedAt.atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
+            builder.and(stage.updatedAt.between(start, end));
+        }
+
+        if (keyword != null){
+            builder.and(stage.stageName.containsIgnoreCase(keyword))
+                    .or(stage.description.containsIgnoreCase(keyword));
+        }
+
+        return builder;
+    }
+
+    public Page<StageResponseDTO> findAll(String projectId, LocalDate createdAt, LocalDate updatedAt, String keyword, Pageable pageable) {
+
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
+        BooleanBuilder predicate = buildDynamicFilter(projectId, createdAt, updatedAt, keyword);
+
+        List<StageResponseDTO> results = queryFactory
                 .select(Projections.constructor(
                         StageResponseDTO.class,
                         stage.stageId,
                         stage.stageName,
-                        stage.order
+                        stage.order,
+                        stage.description,
+                        stage.project.projectId,
+                        stage.isDeleted
                 ))
                 .from(stage)
                 .where(predicate)
+                .orderBy(orders)
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
                 .fetch();
+
+        Long total = queryFactory
+                .select(stage.count())
+                .from(stage)
+                .where(predicate)
+                .fetchOne();
+
+        return new PageImpl<>(results, pageable, total == null ? 0 : total);
     }
 }

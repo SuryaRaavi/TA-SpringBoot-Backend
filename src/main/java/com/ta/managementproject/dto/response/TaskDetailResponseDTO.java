@@ -20,5 +20,4 @@ public class TaskDetailResponseDTO extends TaskResponseDTO{
     private Long todoTask;
     private Long inProgressTask;
     private Double progress;
-    private Integer order;
 }

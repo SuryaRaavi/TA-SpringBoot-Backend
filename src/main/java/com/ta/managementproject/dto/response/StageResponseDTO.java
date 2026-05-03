@@ -13,5 +13,8 @@ public class StageResponseDTO {
     private String stageId;
     private String stageName;
     private Integer order;
+    private String description;
+    private String projectId;
+    private boolean isDeleted;
 
 }

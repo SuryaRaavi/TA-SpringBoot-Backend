@@ -17,9 +17,11 @@ public class TaskResponseDTO {
     private Integer priority;
     private Instant dueDate;
     private String status;
-    private String projectMemberName;
+    private String assigneeId;
     private String label;
     private Instant createdAt;
     private Instant updatedAt;
     private Integer order;
+    private String stageId;
+    private boolean isDeleted;
 }

@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
-import com.ta.managementproject.dto.response.SubTaskDetailResponseDTO;
 import com.ta.managementproject.dto.response.SubTaskResponseDTO;
 import com.ta.managementproject.entity.SubTask;
 import com.ta.managementproject.entity.Task;
@@ -116,13 +115,13 @@ public class SubTaskServiceImpl implements SubTaskService{
                 .isDeleted(false)
                 .build();
 
-        subTaskDb.save(newSubTask);
+        SubTask createdSubTask = subTaskDb.save(newSubTask);
         utilService.updateTaskStatusAndSummary(taskId); // Total CYC: 4, LOC: 25
         utilService.updateStageSummary(task.getStage().getStageId()); // CYC: 2, LOC: 18
         utilService.updateProjectSummary(task.getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.CREATED, "Sub-task created successfully", new CrudResponseDTO(newSubTask.getSubTaskId(), "SUCCESS"));
+        return utilService.buildResponse(HttpStatus.CREATED, "Sub-task created successfully", assignToDto(createdSubTask));
     }
 
     @Override // Total CYC: 14, LOC: 45
@@ -140,10 +139,10 @@ public class SubTaskServiceImpl implements SubTaskService{
         subTask.setLabel(requestDTO.getLabel() != null ? requestDTO.getLabel() : subTask.getLabel());
         subTask.setProjectMember(requestDTO.getProjectMember() != null ? requestDTO.getProjectMember() : subTask.getProjectMember());
 
-        subTaskDb.save(subTask);
+        SubTask updatedSubTask = subTaskDb.save(subTask);
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "Sub-task updated successfully", new CrudResponseDTO(subTaskId, "SUCCESS"));
+        return utilService.buildResponse(HttpStatus.OK, "Sub-task updated successfully", assignToDto(updatedSubTask));
     }
 
     @Override // Total CYC: 9, LOC: 46
@@ -153,18 +152,9 @@ public class SubTaskServiceImpl implements SubTaskService{
         // CYC: 1, LOC: 3
         // CYC: 3, LOC: 10
 
-        SubTaskDetailResponseDTO detail = new SubTaskDetailResponseDTO(
-                subTask.getSubTaskId(),
-                subTask.getSubTaskName(),
-                subTask.getDescription(),
-                subTask.getDueDate(),
-                subTask.getStatus(),
-                subTask.getLabel(),
-                subTask.getProjectMember() != null ? subTask.getProjectMember().getFullName() : "Unassigned"
-        );
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", detail);
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(subTask));
     }
 
     @Override // Total CYC: 17, LOC: 107
@@ -213,10 +203,10 @@ public class SubTaskServiceImpl implements SubTaskService{
         }
 
         subTask.setOrder(boundedOrder);
-        subTaskDb.save(subTask);
+        SubTask reorderedSubTask = subTaskDb.save(subTask);
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "Sub-tasks reordered successfully", null);
+        return utilService.buildResponse(HttpStatus.OK, "Sub-tasks reordered successfully", assignToDto(reorderedSubTask));
     }
 
     @Override // Total CYC: 18, LOC: 110
@@ -230,13 +220,30 @@ public class SubTaskServiceImpl implements SubTaskService{
         authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6
 
         subTask.setStatus(requestDTO.getStatus());
-        subTaskDb.save(subTask);
+        SubTask updatedSubTask = subTaskDb.save(subTask);
         utilService.updateTaskStatusAndSummary(subTask.getTask().getTaskId()); // Total CYC: 4, LOC: 25
         utilService.updateStageSummary(subTask.getTask().getStage().getStageId()); // CYC: 2, LOC: 18
         utilService.updateProjectSummary(subTask.getTask().getStage().getProject().getProjectId()); // CYC: 2, LOC: 18
 
 
         // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "Task status updated successfully", new CrudResponseDTO(subTaskId, Instant.now().toString()));
+        return utilService.buildResponse(HttpStatus.OK, "Task status updated successfully", assignToDto(updatedSubTask));
+    }
+
+    private SubTaskResponseDTO assignToDto(SubTask subTask){
+        return SubTaskResponseDTO.builder()
+                .subTaskId(subTask.getSubTaskId())
+                .subTaskName(subTask.getSubTaskName())
+                .dueDate(subTask.getDueDate())
+                .status(subTask.getStatus())
+                .label(subTask.getLabel())
+                .assigneeId(subTask.getProjectMember() != null ? subTask.getProjectMember().getUsername() : "Unassigned" )
+                .createdAt(subTask.getCreatedAt())
+                .updatedAt(subTask.getUpdatedAt())
+                .order(subTask.getOrder())
+                .taskId(subTask.getTask().getTaskId())
+                .description(subTask.getDescription())
+                .isDeleted(subTask.isDeleted())
+                .build();
     }
 }

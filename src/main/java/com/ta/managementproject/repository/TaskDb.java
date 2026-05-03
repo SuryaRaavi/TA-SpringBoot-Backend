@@ -22,7 +22,7 @@ public interface TaskDb extends JpaRepository<Task, String> {
     @Query(value = "SELECT COUNT(t) FROM Task t WHERE t.stage.stageId = :stageId")
     Integer getTotalTask(@Param("stageId") String stageId);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              Task t 
@@ -37,7 +37,7 @@ public interface TaskDb extends JpaRepository<Task, String> {
             @Param("secondOrder") Integer secondOrder
     );
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              Task t 
@@ -52,7 +52,7 @@ public interface TaskDb extends JpaRepository<Task, String> {
             @Param("secondOrder") Integer secondOrder
     );
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              Task t 
@@ -62,7 +62,7 @@ public interface TaskDb extends JpaRepository<Task, String> {
             """)
     int updateTaskOrderAfterDelete(@Param("stageId") String stageId, @Param("order") Integer order);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
                 SubTask st  

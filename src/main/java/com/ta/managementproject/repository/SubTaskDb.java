@@ -39,7 +39,7 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
     """)
     ProgressResponseDTO getSubTaskSummary(@Param("taskId") String taskId);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              SubTask st 
@@ -54,7 +54,7 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
             @Param("secondOrder") Integer secondOrder
     );
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              SubTask st 
@@ -69,7 +69,7 @@ public interface SubTaskDb extends JpaRepository<SubTask, String> {
             @Param("secondOrder") Integer secondOrder
     );
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             UPDATE 
              SubTask st 

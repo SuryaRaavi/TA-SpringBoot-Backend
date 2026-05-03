@@ -147,11 +147,13 @@ public class TaskDbWithDsl {
                         task.priority,
                         task.dueDate,
                         task.status,
-                        task.projectMember.fullName,
+                        task.projectMember.username,
                         task.label,
                         task.createdAt,
                         task.updatedAt,
-                        task.order
+                        task.order,
+                        task.stage.stageId,
+                        task.isDeleted
                 ))
                 .from(task)
                 .where(predicate)

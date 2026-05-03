@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -16,14 +17,18 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@Builder
 public class SubTaskResponseDTO {
     private String subTaskId;
     private String subTaskName;
     private Instant dueDate;
     private String status;
     private String label;
-    private String projectMemberName;
+    private String assigneeId;
     private Instant createdAt;
     private Instant updatedAt;
     private Integer order;
+    private String taskId;
+    private String description;
+    private boolean isDeleted;
 }
