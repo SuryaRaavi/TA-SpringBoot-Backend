@@ -17,8 +17,8 @@ public class AuthRestController {
     @Autowired
     private AuthService authService;
 
-    @PostMapping("/login") // CYC: 7, LOC: 49
-    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequestDTO) throws Exception{ // CYC: 1, LOC: 4
-        return authService.doLogin(loginRequestDTO);
+    @PostMapping("/login") // CYC: 8, LOC: 54, COG: 2
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequestDTO) throws Exception{ // CYC: 1, LOC: 4, COG: 0
+        return authService.doLogin(loginRequestDTO); // CYC: 7, LOC: 50, COG: 2
     }
 }

@@ -28,7 +28,7 @@ public class StageDbWithDsl {
     private final QStage stage = QStage.stage;
     private static List<String> SORTING_COLUMNS = List.of("stageName", "order", "createdAt", "updatedAt");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29
+    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 9, LOC: 26, COG: 9
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -67,14 +67,19 @@ public class StageDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter(
+    private BooleanBuilder buildDynamicFilter( // CYC: 4, LOC: 29, COG: 3
        String projectId,
        LocalDate createdAt,
        LocalDate updatedAt,
+       String username,
        String keyword
     ){
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(stage.project.projectId.eq(projectId));
+        builder.and(
+                stage.project.projectManager.username.eq(username)
+                .or(stage.project.memberInProjectList.any().projectMember.username.eq(username))
+        );
 
         if (createdAt != null){
             Instant start = createdAt.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -96,10 +101,11 @@ public class StageDbWithDsl {
         return builder;
     }
 
-    public Page<StageResponseDTO> findAll(String projectId, LocalDate createdAt, LocalDate updatedAt, String keyword, Pageable pageable) {
-
-        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable);
-        BooleanBuilder predicate = buildDynamicFilter(projectId, createdAt, updatedAt, keyword);
+    // Total CYC: 15, LOC: 81, COG: 13
+    public Page<StageResponseDTO> findAll(String projectId, LocalDate createdAt, LocalDate updatedAt, String keyword, String username, Pageable pageable) {
+    // CYC: 2, LOC: 26, COG: 1
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 9, LOC: 26, COG: 9
+        BooleanBuilder predicate = buildDynamicFilter(projectId, createdAt, updatedAt, username, keyword); // CYC: 4, LOC: 29, COG: 3
 
         List<StageResponseDTO> results = queryFactory
                 .select(Projections.constructor(

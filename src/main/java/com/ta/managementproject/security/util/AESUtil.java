@@ -13,7 +13,7 @@ public class AESUtil {
     private static final byte[] KEY = secretKey.getBytes();
 
     // Enkripsi data
-    public String encrypt(String data) throws Exception { // CYC: 1, LOC: 7
+    public String encrypt(String data) throws Exception { // CYC: 1, LOC: 7, COG: 0
         Cipher cipher = Cipher.getInstance(ALGORITHM);
         SecretKeySpec keySpec = new SecretKeySpec(KEY, ALGORITHM);
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);

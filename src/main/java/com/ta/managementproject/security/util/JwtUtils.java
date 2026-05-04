@@ -27,7 +27,7 @@ public class JwtUtils {
     @Value("${k3.app.jwtExpirationMs}")
     private long jwtExpirationMs;
 //    private long jwtExpirationMs = 86400000;
-    public String generateJwtToken(String username, String role) { // CYC: 1, LOC: 9
+    public String generateJwtToken(String username, String role) { // CYC: 1, LOC: 9, COG: 0
         return Jwts.builder()
                 .subject(username)
                 .claim("role", role)
@@ -37,7 +37,7 @@ public class JwtUtils {
                 .compact();
     }
 
-    public static String getCurrentUsername(){ // CYC: 1, LOC: 3
+    public static String getCurrentUsername(){ // CYC: 1, LOC: 3, COG: 0
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
@@ -67,6 +67,7 @@ public class JwtUtils {
         return claims.getSubject();
     }
 
+    // Total CYC: 1, LOC: 5, COG: 0
     public Date getExpirationFromToken(String token) {
         JwtParser jwtParser = Jwts.parser().verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes())).build();
         Claims claims = jwtParser.parse(token).accept(Jws.CLAIMS).getPayload();

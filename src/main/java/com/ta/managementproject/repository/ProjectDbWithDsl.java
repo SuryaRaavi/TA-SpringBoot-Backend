@@ -36,7 +36,7 @@ public class ProjectDbWithDsl {
 
     private static List<String> SORTING_COLUMNS = List.of("projectName", "startDate", "endDate", "createdAt", "updatedAt");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29
+    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29, COG: 9
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -79,9 +79,8 @@ public class ProjectDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter( // CYC: 7, LOC: 39
-            String pmUsername,
-            String memberUsername,
+    private BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 37, COG: 5
+            String username,
             LocalDate startDate,
             LocalDate endDate,
             LocalDate createdAt,
@@ -89,12 +88,10 @@ public class ProjectDbWithDsl {
             String keyword
     ){
         BooleanBuilder builder = new BooleanBuilder();
-
-        if (pmUsername != null){
-            builder.and(project.projectManager.username.eq(pmUsername));
-        }else{
-            builder.and(project.memberInProjectList.any().projectMember.username.eq(memberUsername));
-        }
+        builder.and(
+                project.projectManager.username.eq(username)
+                .or(project.memberInProjectList.any().projectMember.username.eq(username))
+        );
 
         if (startDate != null) {
             Instant instant = startDate.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -126,10 +123,9 @@ public class ProjectDbWithDsl {
         return builder;
     }
 
-    // CYC: 19, LOC: 112
-    public Page<ProjectResponseDTO> findAll(
-            String pmUsername,
-            String memberUsername,
+    // Total CYC: 18, LOC: 104, COG: 15
+    public Page<ProjectResponseDTO> findAll( // CYC: 2, LOC: 38, COG: 1
+            String username,
             LocalDate startDate,
             LocalDate endDate,
             LocalDate createdAt,
@@ -137,8 +133,8 @@ public class ProjectDbWithDsl {
             String keyword,
             Pageable pageable
     ){
-        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29
-        BooleanBuilder predicate = buildDynamicFilter(pmUsername, memberUsername, startDate, endDate, createdAt, updatedAt, keyword); // CYC: 7, LOC: 39
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29, COG: 9
+        BooleanBuilder predicate = buildDynamicFilter(username, startDate, endDate, createdAt, updatedAt, keyword); // CYC: 6, LOC: 37, COG: 5
 
         List<ProjectResponseDTO> results = queryFactory
                 .select(Projections.constructor(

@@ -59,8 +59,8 @@ public class UserServiceImpl implements UserService{
         this.authService = authService;
     }
 
-    @Override // Total CYC: 8, LOC: 57
-    public ResponseEntity<?> addNewUser(RegisterRequestDTO requestDTO) throws Exception { // CYC: 6, LOC: 41
+    @Override // Total CYC: 8, LOC: 57, COG: 7
+    public ResponseEntity<?> addNewUser(RegisterRequestDTO requestDTO) throws Exception { // CYC: 6, LOC: 41, COG: 7
         String username = requestDTO.getUsername();
         String fullName = requestDTO.getFullName();
         String password = requestDTO.getPassword();
@@ -80,7 +80,7 @@ public class UserServiceImpl implements UserService{
             ProjectManager projectManager = ProjectManager.builder()
                     .role(roleDb.findByName("PROJECT_MANAGER"))
                     .username(username)
-                    .password(aesUtil.encrypt(password)) // CYC: 1, LOC: 7
+                    .password(aesUtil.encrypt(password)) // CYC: 1, LOC: 7, COG: 0
                     .fullName(fullName)
                     .createdAt(Instant.now())
                     .build();
@@ -105,7 +105,7 @@ public class UserServiceImpl implements UserService{
             projectMemberDb.save((ProjectMember) newUser);
         }
 
-        return utilService.buildResponse( // CYC: 1, LOC: 9
+        return utilService.buildResponse( // CYC: 1, LOC: 9, COG: 0
                 HttpStatus.CREATED,
                 String.format("Username %s berhasil didaftarkan", requestDTO.getUsername()),
                 new CrudResponseDTO("SUCCESS", String.format("Username %s berhasil didaftarkan", requestDTO.getUsername())));

@@ -3,13 +3,13 @@ package com.ta.managementproject.service.stage;
 import com.ta.managementproject.dto.request.CreateUpdateStageRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
 import com.ta.managementproject.dto.response.CrudResponseDTO;
-import com.ta.managementproject.dto.response.ProgressResponseDTO;
 import com.ta.managementproject.dto.response.StageDetailResponseDTO;
 import com.ta.managementproject.dto.response.StageResponseDTO;
 import com.ta.managementproject.entity.Project;
 import com.ta.managementproject.entity.Stage;
 import com.ta.managementproject.entity.User;
 import com.ta.managementproject.exception.ConflictException;
+import com.ta.managementproject.exception.NotFoundException;
 import com.ta.managementproject.repository.*;
 import com.ta.managementproject.security.util.JwtUtils;
 import com.ta.managementproject.service.UtilService;
@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -67,41 +66,37 @@ public class StageServiceImpl implements StageService{
         this.stageDbWithDsl = stageDbWithDsl;
     }
 
-    @Override // Total CYC: 9, LOC: 52
-    public ResponseEntity<?> getAllStage(String projectId, Pageable pageable, LocalDate createdAt, LocalDate updatedAt, String keyword) {  // CYC: 1, LOC: 8
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
+    @Override // Total CYC: 18, LOC: 99, COG: 13
+    public ResponseEntity<?> getAllStage(String projectId, Pageable pageable, LocalDate createdAt, LocalDate updatedAt, String keyword) {  // CYC: 1, LOC: 6, COG: 0
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
 
-        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
+        Page<StageResponseDTO> stageList = stageDbWithDsl.findAll(projectId, createdAt, updatedAt, keyword, username, pageable); // CYC: 15, LOC: 81, COG: 13
 
-        authService.validateManagerAndMemberAccess(project, username); // CYC: 3, LOC: 10
-
-        Page<StageResponseDTO> stageList = stageDbWithDsl.findAll(projectId, createdAt, updatedAt, keyword, pageable); // CYC: 1, LOC: 14
-
-        // CYC: 1, LOC: 9
+        // CYC: 1, LOC: 9, COG: 0
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", stageList);
     }
 
-    @Override // Total CYC: 8, LOC: 47
-    public ResponseEntity<?> getStage(String stageId){ // CYC: 1, LOC: 17
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
+    @Override // Total CYC: 9, LOC: 53, COG: 3
+    public ResponseEntity<?> getStage(String stageId){ // CYC: 1, LOC: 7, COG: 0
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
 
-        Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8
+        Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAndMemberAccess(stage.getProject(), username); // CYC: 3, LOC: 10
+        authService.validateManagerAndMemberAccess(stage.getProject(), username); // CYC: 3, LOC: 10, COG: 2
 
-        // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(stage));
+        // CYC: 1, LOC: 9, COG: 0
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(stage)); // CYC: 1, LOC: 16, COG: 0
     }
 
-    @Override // Total CYC: 9, LOC: 49
+    @Override // Total CYC: 10, LOC: 65, COG: 3
     @Transactional
-    public ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 1, LOC: 17
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3
+    public ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 1, LOC: 17, COG: 0
+        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
 
-        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6
-        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
+        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6, COG: 1
+        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
 
         Stage newStage = Stage.builder()
                 .stageName(requestDTO.getStageName())
@@ -113,18 +108,18 @@ public class StageServiceImpl implements StageService{
 
         Stage createdStage = stageDb.save(newStage);
 
-        // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(createdStage));
+        // CYC: 1, LOC: 9, COG: 0
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(createdStage)); // CYC: 1, LOC: 16, COG: 0
     }
 
-    @Override // Total CYC: 11, LOC: 46
-    public ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 3, LOC: 14
-        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
+    @Override // Total CYC: 12, LOC: 62, COG: 5
+    public ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 3, LOC: 14, COG: 2
+        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
 
-        Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8
+        Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(stage.getProject(), user.getUsername()); // CYC: 2, LOC: 6
-        authService.validateProjectCancellation(stage.getProject()); // CYC: 2, LOC: 6
+        authService.validateManagerAccess(stage.getProject(), user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+        authService.validateProjectCancellation(stage.getProject()); // CYC: 2, LOC: 6, COG: 1
 
         Stage updatedStage = stageDb.save(
                 stage.toBuilder()
@@ -133,19 +128,19 @@ public class StageServiceImpl implements StageService{
                         .build()
         );
 
-        // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK,"SUCCESS", assignToDto(updatedStage));
+        // CYC: 1, LOC: 9, COG: 0
+        return utilService.buildResponse(HttpStatus.OK,"SUCCESS", assignToDto(updatedStage)); // CYC: 1, LOC: 16, COG: 0
     }
 
-    @Override // Total CYC: 9, LOC: 54
+    @Override // Total CYC: 12, LOC: 70, COG: 6
     @Transactional
-    public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) { // CYC: 3, LOC: 22
-        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
-        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
+    public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) { // CYC: 3, LOC: 22, COG: 3
+        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+        Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
         int totalStage = project.getStageList().size();
 
-        authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6
-        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
+        authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+        authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
 
         Stage stage = stageDb.findByStageId(requestDTO.getId());
 
@@ -164,18 +159,18 @@ public class StageServiceImpl implements StageService{
         stage.setOrder(boundedOrder);
         Stage reorderedStage = stageDb.save(stage);
 
-        // CYC: 1, LOC: 9
-        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(reorderedStage));
+        // CYC: 1, LOC: 9, COG: 0
+        return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(reorderedStage)); // CYC: 1, LOC: 16, COG: 0
     }
 
-    @Override // Total CYC: 12, LOC: 66
+    @Override // Total CYC: 11, LOC: 66, COG: 4
     @Transactional
-    public ResponseEntity<?> deleteStageById(String projectId, String stageId) { // CYC: 2, LOC: 16
-            User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3
-            Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8
+    public ResponseEntity<?> deleteStageById(String projectId, String stageId) { // CYC: 1, LOC: 16, COG: 0
+            User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+            Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-            authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6
-            authService.validateProjectCancellation(project); // CYC: 2, LOC: 6
+            authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+            authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
 
             Stage stage = stageDb.findByStageId(stageId);
             Integer order = stage.getOrder();
@@ -185,12 +180,13 @@ public class StageServiceImpl implements StageService{
 
             stageDb.delete(stage);
             stageDb.updateStageOrderAfterDelete(projectId, order);
-            utilService.updateProjectSummary(projectId); // CYC: 2, LOC: 18
+            utilService.updateProjectSummary(projectId); // CYC: 2, LOC: 18, COG: 1
 
-            // CYC: 1, LOC: 9
+            // CYC: 1, LOC: 9, COG: 0
             return utilService.buildResponse(HttpStatus.OK, "SUCCESS", new CrudResponseDTO("SUCCESS", "Stage has been deleted!"));
     }
 
+    // CYC: 1, LOC: 16, COG: 0
     private StageDetailResponseDTO assignToDto(Stage stage){
         return StageDetailResponseDTO.builder()
                 .stageName(stage.getStageName())

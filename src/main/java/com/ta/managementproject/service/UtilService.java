@@ -30,7 +30,7 @@ public class UtilService {
         this.taskDb = taskDb;
     }
 
-    // CYC: 1, LOC: 9
+    // CYC: 1, LOC: 9, COG: 0
     public <T> ResponseEntity<BaseResponseDTO<T>> buildResponse(
             HttpStatus status, String message, T data) {
 
@@ -43,7 +43,7 @@ public class UtilService {
         return new ResponseEntity<>(res, status);
     }
 
-    // CYC: 2, LOC: 19
+    // CYC: 2, LOC: 18, COG: 1
     @Transactional
     public void updateProjectSummary(String projectId) {
         Project project = projectDb.findByProjectId(projectId);
@@ -65,7 +65,7 @@ public class UtilService {
         );
     }
 
-    // CYC: 2, LOC: 19
+    // CYC: 2, LOC: 18, COG: 1
     @Transactional
     public void updateStageSummary(String stageId) {
         Stage stage = stageDb.findByStageId(stageId);
@@ -87,7 +87,7 @@ public class UtilService {
         );
     }
 
-    // Total CYC: 4, LOC: 26
+    // Total CYC: 4, LOC: 26, COG: 4
     @Transactional
     public void updateTaskStatusAndSummary(String taskId){
         Task task = taskDb.findByTaskId(taskId);

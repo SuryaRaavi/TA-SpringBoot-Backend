@@ -20,9 +20,9 @@ public class TaskRestController{
     @Autowired
     private TaskService taskService;
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 27, LOC: 174
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 24, LOC: 188, COG: 16
     @GetMapping("")
-    public ResponseEntity<?> getAllTask( // CYC: 1, LOC: 34
+    public ResponseEntity<?> getAllTask( // CYC: 1, LOC: 34, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PageableDefault(size = 10, page = 0) Pageable pageable,
@@ -49,7 +49,7 @@ public class TaskRestController{
 
             @RequestParam(required = false) String keyword
     ){
-        return taskService.getAllTask( // CYC: 26, LOC:  140
+        return taskService.getAllTask( // CYC: 23, LOC: 154, COG: 16
                 pageable,
                 stageId,
                 dueDate,
@@ -61,65 +61,65 @@ public class TaskRestController{
         );
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 14, LOC: 97
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 16, LOC: 122, COG: 6
     @PostMapping("")
-    public ResponseEntity<?> addNewTask( // CYC: 1, LOC: 9
+    public ResponseEntity<?> addNewTask( // CYC: 1, LOC: 9, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
-        return taskService.addNewTask(stageId, requestDTO); // CYC: 13, LOC: 88
+        return taskService.addNewTask(stageId, requestDTO); // CYC: 15, LOC: 113, COG: 6
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 9, LOC: 55
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 12, LOC: 77, COG: 4
     @PatchMapping("/{taskId}")
-    public ResponseEntity<?> updateTask( // CYC: 1, LOC: 10
+    public ResponseEntity<?> updateTask( // CYC: 1, LOC: 10, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
-        return taskService.updateTask(taskId, requestDTO); // CYC: 8, LOC: 45
+        return taskService.updateTask(taskId, requestDTO); // CYC: 11, LOC: 67, COG: 4
     }
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 10, LOC: 62
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 11, LOC: 68, COG: 4
     @GetMapping("/{taskId}")
-    public ResponseEntity<?> getDetailTask( // CYC: 1, LOC: 9
+    public ResponseEntity<?> getDetailTask( // CYC: 1, LOC: 9, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId
     ){
-        return taskService.getDetailTask(taskId); // CYC: 9, LOC: 53
+        return taskService.getDetailTask(taskId); // CYC: 10, LOC: 59, COG: 4
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 14, LOC: 70
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 16, LOC: 92, COG: 8
     @PatchMapping("/reorder")
-    public ResponseEntity<?> reorderTask( // CYC: 1, LOC: 9
+    public ResponseEntity<?> reorderTask( // CYC: 1, LOC: 9, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @RequestBody ReorderRequestDTO requestDTO
     ){
-        return taskService.reorderTask(stageId, requestDTO); // CYC: 13, LOC: 61
+        return taskService.reorderTask(stageId, requestDTO); // CYC: 15, LOC: 83, COG: 8
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 15, LOC: 91
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 14, LOC: 91, COG: 5
     @DeleteMapping("/{taskId}")
-    public ResponseEntity<?> deleteTask( // CYC: 1, LOC: 9
+    public ResponseEntity<?> deleteTask( // CYC: 1, LOC: 9, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId
     ){
-        return taskService.deleteTaskById(stageId, taskId); // CYC: 14, LOC: 82
+        return taskService.deleteTaskById(stageId, taskId); // CYC: 13, LOC: 82, COG: 5
     }
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 14, LOC: 100
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 18, LOC: 119, COG: 8
     @PatchMapping("/update-status")
-    public ResponseEntity<?> updateTaskStatus( // CYC: 1, LOC: 10
+    public ResponseEntity<?> updateTaskStatus( // CYC: 1, LOC: 10, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
-        return taskService.updateTaskStatus(taskId, requestDTO); // CYC: 13, LOC: 90
+        return taskService.updateTaskStatus(taskId, requestDTO); // CYC: 17, LOC: 109, COG: 8
     }
 }

@@ -19,9 +19,9 @@ public class StageRestController {
     @Autowired
     private StageService stageService;
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 11, LOC: 51
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 19, LOC: 114, COG: 13
     @GetMapping("")
-    public ResponseEntity<?> getAllStage(
+    public ResponseEntity<?> getAllStage( // CYC: 1, LOC: 15, COG: 0
             @PathVariable String projectId,
             @PageableDefault(size = 10, page = 0) Pageable pageable,
             @RequestParam(required = false)
@@ -33,39 +33,38 @@ public class StageRestController {
             LocalDate updatedAt,
 
             @RequestParam(required = false) String keyword
-
-    ){ // CYC: 1, LOC: 5
-        return stageService.getAllStage(projectId, pageable, createdAt, updatedAt, keyword); // CYC: 10, LOC: 46
+    ){
+        return stageService.getAllStage(projectId, pageable, createdAt, updatedAt, keyword); // CYC: 18, LOC: 99, COG: 13
     }
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 9, LOC: 52
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 10, LOC: 58, COG: 3
     @GetMapping("/{stageId}")
-    public ResponseEntity<?> getStage(@PathVariable String projectId, @PathVariable String stageId){ // CYC: 1, LOC: 5
-        return stageService.getStage(stageId); // CYC: 8, LOC: 47
+    public ResponseEntity<?> getStage(@PathVariable String projectId, @PathVariable String stageId){ // CYC: 1, LOC: 5, COG: 0
+        return stageService.getStage(stageId); // CYC: 9, LOC: 53, COG: 3
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 10, LOC: 54
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 11, LOC: 70, COG: 3
     @PostMapping("")
-    public ResponseEntity<?> addNewStage(@PathVariable String projectId, @RequestBody CreateUpdateStageRequestDTO requestDTO){ // CYC: 1, LOC: 5
-        return stageService.addNewStage(projectId, requestDTO);  // CYC: 9, LOC: 49
+    public ResponseEntity<?> addNewStage(@PathVariable String projectId, @RequestBody CreateUpdateStageRequestDTO requestDTO){ // CYC: 1, LOC: 5, COG: 0
+        return stageService.addNewStage(projectId, requestDTO);  // CYC: 10, LOC: 65, COG: 3
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 12, LOC: 51
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 13, LOC: 67, COG: 5
     @PatchMapping("/{stageId}")
-    public ResponseEntity<?> updateStage(@PathVariable String projectId, @PathVariable String stageId, @RequestBody CreateUpdateStageRequestDTO requestDTO){ // CYC: 1, LOC: 5
-        return stageService.editStage(stageId, requestDTO); // CYC: 11, LOC: 46
+    public ResponseEntity<?> updateStage(@PathVariable String projectId, @PathVariable String stageId, @RequestBody CreateUpdateStageRequestDTO requestDTO){ // CYC: 1, LOC: 5, COG: 0
+        return stageService.editStage(stageId, requestDTO); // CYC: 12, LOC: 62, COG: 5
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 10, LOC: 59
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 13, LOC: 75, COG: 6
     @PatchMapping("/reorder")
-    public ResponseEntity<?> reorderStage(@PathVariable String projectId, @RequestBody ReorderRequestDTO requestDTO){ // CYC: 1, LOC: 5
-        return stageService.reorderStage(projectId, requestDTO); // CYC: 9, LOC: 54
+    public ResponseEntity<?> reorderStage(@PathVariable String projectId, @RequestBody ReorderRequestDTO requestDTO){ // CYC: 1, LOC: 5, COG: 0
+        return stageService.reorderStage(projectId, requestDTO); // CYC: 12, LOC: 70, COG: 6
     }
 
-    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 13, LOC: 71
+    @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 12, LOC: 71, COG: 4
     @DeleteMapping("/{stageId}")
-    public ResponseEntity<?> deleteStage(@PathVariable String projectId, @PathVariable String stageId){ // CYC: 1, LOC: 5
-        return stageService.deleteStageById(projectId, stageId); // CYC: 12, LOC: 66
+    public ResponseEntity<?> deleteStage(@PathVariable String projectId, @PathVariable String stageId){ // CYC: 1, LOC: 5, COG: 0
+        return stageService.deleteStageById(projectId, stageId); //  CYC: 11, LOC: 66, COG: 4
     }
 }
 
