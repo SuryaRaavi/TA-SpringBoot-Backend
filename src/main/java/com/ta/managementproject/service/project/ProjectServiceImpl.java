@@ -3,7 +3,6 @@ package com.ta.managementproject.service.project;
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
 import com.ta.managementproject.dto.response.*;
 import com.ta.managementproject.entity.*;
-import com.ta.managementproject.enums.Role;
 import com.ta.managementproject.exception.BadRequestException;
 import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.exception.NotFoundException;

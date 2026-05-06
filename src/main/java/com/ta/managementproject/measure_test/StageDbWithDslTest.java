@@ -1,11 +1,12 @@
 //package com.ta.managementproject.measure_test;
 //
+//import com.querydsl.core.BooleanBuilder;
 //import com.querydsl.core.types.EntityPath;
-//import com.querydsl.core.types.Expression;
-//import com.querydsl.core.types.Predicate;
+//import com.querydsl.core.types.OrderSpecifier;
 //import com.querydsl.jpa.impl.JPAQuery;
 //import com.querydsl.jpa.impl.JPAQueryFactory;
 //import com.ta.managementproject.dto.response.StageResponseDTO;
+//import com.ta.managementproject.exception.BadRequestException;
 //import com.ta.managementproject.repository.StageDbWithDsl;
 //import org.junit.jupiter.api.BeforeEach;
 //import org.junit.jupiter.api.Test;
@@ -13,16 +14,20 @@
 //import org.mockito.InjectMocks;
 //import org.mockito.Mock;
 //import org.mockito.junit.jupiter.MockitoExtension;
+//import org.springframework.data.domain.Page;
+//import org.springframework.data.domain.PageRequest;
+//import org.springframework.data.domain.Pageable;
+//import org.springframework.data.domain.Sort;
 //
+//import java.time.LocalDate;
 //import java.util.List;
-//import java.util.UUID;
 //
-//import static org.assertj.core.api.Assertions.assertThat;
-//import static org.mockito.ArgumentMatchers.any;
+//import static org.junit.jupiter.api.Assertions.*;
+//import static org.mockito.ArgumentMatchers.*;
 //import static org.mockito.Mockito.*;
 //
 //@ExtendWith(MockitoExtension.class)
-//public class StageDbWithDslTest {
+//class StageDbWithDslTest {
 //
 //    @Mock
 //    private JPAQueryFactory queryFactory;
@@ -30,220 +35,252 @@
 //    @InjectMocks
 //    private StageDbWithDsl stageDbWithDsl;
 //
-//    @Mock
-//    private JPAQuery<StageResponseDTO> selectQuery;
+//    @Mock private JPAQuery<StageResponseDTO> selectQuery;
+//    @Mock private JPAQuery<Long> countQuery;
 //
-//    @Mock
-//    private JPAQuery<Long> countQuery;
+//    private List<StageResponseDTO> mockResults;
 //
-//    private static final String PROJECT_ID     = "project-001";
-//    private static final String PM_USERNAME    = "pm_user";
-//    private static final String MEMBER_USERNAME = "member_user";
-//
-//    private StageResponseDTO sampleDto;
-//
-//    /**
-//     * Konstruktor StageResponseDTO sesuai urutan Projections.constructor di repository:
-//     * stageId, stageName, order, finishedTask(null), inProgressTask(null),
-//     * todoTask(null), totalTask(null), progress(null)
-//     */
 //    @BeforeEach
 //    void setUp() {
-//        sampleDto = new StageResponseDTO(
-//                UUID.randomUUID().toString(), // stageId
-//                "Stage Alpha",               // stageName
-//                1,                           // order
-//                null,                        // finishedTask
-//                null,                        // inProgressTask
-//                null,                        // todoTask
-//                null,                        // totalTask
-//                null                         // progress
+//        mockResults = List.of(
+//                new StageResponseDTO("stage-1", "Stage A", 1, "Desc A", "project-1", false),
+//                new StageResponseDTO("stage-2", "Stage B", 2, "Desc B", "project-1", false)
 //        );
 //    }
 //
-//    // ─── Helper: stub findAll chain ──────────────────────────────────────────────
+//    // ===================== Helper: stub full query chain =====================
 //
 //    @SuppressWarnings("unchecked")
-//    private void stubFindAllChain(List<StageResponseDTO> results) {
-//        when(queryFactory.select(any(Expression.class))).thenReturn((JPAQuery) selectQuery);
-//        when(selectQuery.from(any(EntityPath.class))).thenReturn((JPAQuery) selectQuery);
-//        when(selectQuery.where(any(Predicate.class))).thenReturn((JPAQuery) selectQuery);
+//    private void stubQueryChain(List<StageResponseDTO> results, Long total) {
+//        when(queryFactory.select(any(com.querydsl.core.types.Expression.class)))
+//                .thenReturn((JPAQuery) selectQuery)
+//                .thenReturn((JPAQuery) countQuery);
+//
+//        when(selectQuery.from((EntityPath<?>) any())).thenReturn(selectQuery);
+//        when(selectQuery.where(any(BooleanBuilder.class))).thenReturn(selectQuery);
+//        when(selectQuery.orderBy(any(OrderSpecifier[].class))).thenReturn(selectQuery);
+//        when(selectQuery.offset(anyLong())).thenReturn(selectQuery);
+//        when(selectQuery.limit(anyLong())).thenReturn(selectQuery);
 //        when(selectQuery.fetch()).thenReturn(results);
+//
+//        when(countQuery.from((EntityPath<?>) any())).thenReturn(countQuery);
+//        when(countQuery.where(any(BooleanBuilder.class))).thenReturn(countQuery);
+//        when(countQuery.fetchOne()).thenReturn(total);
 //    }
 //
-//    // ─── Helper: stub totalStageByProject chain ──────────────────────────────────
-//
-//    @SuppressWarnings("unchecked")
-//    private void stubCountChain(Long count) {
-//        when(queryFactory.select(any(Expression.class))).thenReturn((JPAQuery) countQuery);
-//        when(countQuery.from(any(EntityPath.class))).thenReturn((JPAQuery) countQuery);
-//        when(countQuery.where(any(Predicate.class))).thenReturn((JPAQuery) countQuery);
-//        when(countQuery.fetchOne()).thenReturn(count);
-//    }
-//
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // totalStageByProject — count normal
-//    // ════════════════════════════════════════════════════════════════════════════
+//    // ===================== findAll — hasil dan paginasi =====================
 //
 //    @Test
-//    void totalStageByProject_withExistingStages_shouldReturnCount() {
-//        stubCountChain(3L);
+//    void findAll_ShouldReturnPageWithResults_WhenDataExists() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").ascending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        Long result = stageDbWithDsl.totalStageByProject(PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
 //
-//        assertThat(result).isEqualTo(3L);
+//        assertEquals(2, result.getContent().size());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // totalStageByProject — fetchOne null → kembalikan 0
-//    // ════════════════════════════════════════════════════════════════════════════
-//
-//    /**
-//     * Repository: total == null ? 0L : total
-//     */
 //    @Test
-//    void totalStageByProject_whenCountIsNull_shouldReturnZero() {
-//        stubCountChain(null);
+//    void findAll_ShouldReturnCorrectTotalElements_WhenDataExists() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").ascending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        Long result = stageDbWithDsl.totalStageByProject(PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
 //
-//        assertThat(result).isZero();
+//        assertEquals(2L, result.getTotalElements());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // totalStageByProject — tidak ada stage → 0
-//    // ════════════════════════════════════════════════════════════════════════════
-//
 //    @Test
-//    void totalStageByProject_withNoStages_shouldReturnZero() {
-//        stubCountChain(0L);
+//    void findAll_ShouldReturnZeroTotal_WhenCountIsNull() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").ascending());
+//        stubQueryChain(List.of(), null);
 //
-//        Long result = stageDbWithDsl.totalStageByProject(PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
 //
-//        assertThat(result).isZero();
+//        assertEquals(0L, result.getTotalElements());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // totalStageByProject — queryFactory.select dipanggil sekali
-//    // ════════════════════════════════════════════════════════════════════════════
-//
 //    @Test
-//    void totalStageByProject_shouldCallQueryFactorySelectOnce() {
-//        stubCountChain(2L);
+//    void findAll_ShouldReturnEmptyContent_WhenNoDataExists() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").ascending());
+//        stubQueryChain(List.of(), 0L);
 //
-//        stageDbWithDsl.totalStageByProject(PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
 //
-//        verify(queryFactory, times(1)).select(any(Expression.class));
+//        assertTrue(result.getContent().isEmpty());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // findAll — filter by pmUsername, ada hasil
-//    // ════════════════════════════════════════════════════════════════════════════
+//    // ===================== findAll — filter parameter =====================
 //
 //    @Test
-//    void findAll_withPmUsername_shouldReturnListOfStages() {
-//        stubFindAllChain(List.of(sampleDto));
+//    void findAll_ShouldExecuteQuery_WhenCreatedAtProvided() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").ascending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        List<StageResponseDTO> result = stageDbWithDsl.findAll(PM_USERNAME, null, PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", LocalDate.of(2024, 6, 1), null, null, "user1", pageable);
 //
-//        assertThat(result).hasSize(1);
-//        assertThat(result.get(0).getStageName()).isEqualTo("Stage Alpha");
+//        assertEquals(2, result.getContent().size());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // findAll — filter by memberUsername, ada hasil
-//    // ════════════════════════════════════════════════════════════════════════════
-//
 //    @Test
-//    void findAll_withMemberUsername_shouldReturnListOfStages() {
-//        stubFindAllChain(List.of(sampleDto));
+//    void findAll_ShouldExecuteQuery_WhenUpdatedAtProvided() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("updatedAt").ascending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        List<StageResponseDTO> result = stageDbWithDsl.findAll(null, MEMBER_USERNAME, PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, LocalDate.of(2024, 6, 1), null, "user1", pageable);
 //
-//        assertThat(result).hasSize(1);
-//        assertThat(result.get(0).getStageName()).isEqualTo("Stage Alpha");
+//        assertEquals(2, result.getContent().size());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // findAll — tidak ada stage → list kosong
-//    // ════════════════════════════════════════════════════════════════════════════
-//
 //    @Test
-//    void findAll_whenNoStages_shouldReturnEmptyList() {
-//        stubFindAllChain(List.of());
+//    void findAll_ShouldExecuteQuery_WhenKeywordProvided() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("stageName").ascending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        List<StageResponseDTO> result = stageDbWithDsl.findAll(PM_USERNAME, null, PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, "Stage", "user1", pageable);
 //
-//        assertThat(result).isEmpty();
+//        assertEquals(2, result.getContent().size());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // findAll — multiple stages
-//    // ════════════════════════════════════════════════════════════════════════════
-//
 //    @Test
-//    void findAll_withMultipleStages_shouldReturnAllStages() {
-//        StageResponseDTO dto2 = new StageResponseDTO(
-//                UUID.randomUUID().toString(),
-//                "Stage Beta",
-//                2,
-//                null, null, null, null, null
+//    void findAll_ShouldExecuteQuery_WhenAllFiltersProvided() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("stageName").ascending());
+//        stubQueryChain(mockResults, 2L);
+//
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1",
+//                LocalDate.of(2024, 1, 1),
+//                LocalDate.of(2024, 6, 1),
+//                "Stage",
+//                "user1",
+//                pageable
 //        );
-//        stubFindAllChain(List.of(sampleDto, dto2));
 //
-//        List<StageResponseDTO> result = stageDbWithDsl.findAll(PM_USERNAME, null, PROJECT_ID);
-//
-//        assertThat(result).hasSize(2);
-//        assertThat(result.get(0).getStageName()).isEqualTo("Stage Alpha");
-//        assertThat(result.get(1).getStageName()).isEqualTo("Stage Beta");
+//        assertEquals(2, result.getContent().size());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // findAll — progress-related fields null (belum dihitung)
-//    // ════════════════════════════════════════════════════════════════════════════
-//
-//    /**
-//     * Repository mengisi finishedTask, inProgressTask, todoTask, totalTask, progress
-//     * dengan Expressions.nullExpression — semua field ini harus null di hasil query.
-//     * Kalkulasi dilakukan di service layer (getStageStatistics).
-//     */
 //    @Test
-//    void findAll_shouldReturnStagesWithNullProgressFields() {
-//        stubFindAllChain(List.of(sampleDto));
+//    void findAll_ShouldExecuteQuery_WhenAllFiltersNull() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("order").ascending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        List<StageResponseDTO> result = stageDbWithDsl.findAll(PM_USERNAME, null, PROJECT_ID);
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
 //
-//        StageResponseDTO dto = result.get(0);
-//        assertThat(dto.getFinishedTask()).isNull();
-//        assertThat(dto.getInProgressTask()).isNull();
-//        assertThat(dto.getTodoTask()).isNull();
-//        assertThat(dto.getTotalTask()).isNull();
-//        assertThat(dto.getProgress()).isNull();
+//        assertEquals(2, result.getContent().size());
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // findAll — queryFactory.select dipanggil tepat sekali
-//    // ════════════════════════════════════════════════════════════════════════════
+//    // ===================== getOrderSpecifiers — valid columns =====================
 //
 //    @Test
-//    void findAll_shouldCallQueryFactorySelectOnce() {
-//        stubFindAllChain(List.of(sampleDto));
+//    void findAll_ShouldNotThrow_WhenSortByStageName() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("stageName").ascending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        stageDbWithDsl.findAll(PM_USERNAME, null, PROJECT_ID);
-//
-//        verify(queryFactory, times(1)).select(any(Expression.class));
+//        assertDoesNotThrow(() -> stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable));
 //    }
 //
-//    // ════════════════════════════════════════════════════════════════════════════
-//    // findAll — order field terisi dengan benar
-//    // ════════════════════════════════════════════════════════════════════════════
+//    @Test
+//    void findAll_ShouldNotThrow_WhenSortByOrder() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("order").descending());
+//        stubQueryChain(mockResults, 2L);
+//
+//        assertDoesNotThrow(() -> stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable));
+//    }
 //
 //    @Test
-//    void findAll_shouldReturnStageWithCorrectOrder() {
-//        stubFindAllChain(List.of(sampleDto));
+//    void findAll_ShouldNotThrow_WhenSortByCreatedAt() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").descending());
+//        stubQueryChain(mockResults, 2L);
 //
-//        List<StageResponseDTO> result = stageDbWithDsl.findAll(PM_USERNAME, null, PROJECT_ID);
+//        assertDoesNotThrow(() -> stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable));
+//    }
 //
-//        assertThat(result.get(0).getOrder()).isEqualTo(1);
+//    @Test
+//    void findAll_ShouldNotThrow_WhenSortByUpdatedAt() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("updatedAt").ascending());
+//        stubQueryChain(mockResults, 2L);
+//
+//        assertDoesNotThrow(() -> stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable));
+//    }
+//
+//    // ===================== getOrderSpecifiers — invalid column =====================
+//
+//    @Test
+//    void findAll_ShouldThrowBadRequestException_WhenSortColumnInvalid() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("invalidColumn").ascending());
+//
+//        assertThrows(BadRequestException.class, () -> stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable));
+//    }
+//
+//    @Test
+//    void findAll_ShouldThrowBadRequestException_WithCorrectMessage_WhenSortColumnInvalid() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.by("hacked").ascending());
+//
+//        BadRequestException ex = assertThrows(BadRequestException.class,
+//                () -> stageDbWithDsl.findAll(
+//                        "project-1", null, null, null, "user1", pageable));
+//
+//        assertEquals("Sorting column is not valid!", ex.getMessage());
+//    }
+//
+//    // ===================== getOrderSpecifiers — default sorting =====================
+//
+//    @Test
+//    void findAll_ShouldUseDefaultSorting_WhenNoSortProvided() {
+//        Pageable pageable = PageRequest.of(0, 10, Sort.unsorted());
+//        stubQueryChain(mockResults, 2L);
+//
+//        assertDoesNotThrow(() -> stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable));
+//    }
+//
+//    // ===================== findAll — paginasi =====================
+//
+//    @Test
+//    void findAll_ShouldRespectPageSize() {
+//        Pageable pageable = PageRequest.of(0, 5, Sort.by("order").ascending());
+//        stubQueryChain(mockResults, 2L);
+//
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
+//
+//        assertEquals(5, result.getSize());
+//    }
+//
+//    @Test
+//    void findAll_ShouldRespectPageNumber() {
+//        Pageable pageable = PageRequest.of(2, 10, Sort.by("order").ascending());
+//        stubQueryChain(mockResults, 2L);
+//
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
+//
+//        assertEquals(2, result.getNumber());
+//    }
+//
+//    @Test
+//    void findAll_ShouldReturnCorrectPageable() {
+//        Pageable pageable = PageRequest.of(1, 5, Sort.by("stageName").ascending());
+//        stubQueryChain(mockResults, 10L);
+//
+//        Page<StageResponseDTO> result = stageDbWithDsl.findAll(
+//                "project-1", null, null, null, "user1", pageable);
+//
+//        assertEquals(1, result.getNumber());
+//        assertEquals(5, result.getSize());
+//        assertEquals(10L, result.getTotalElements());
 //    }
 //}

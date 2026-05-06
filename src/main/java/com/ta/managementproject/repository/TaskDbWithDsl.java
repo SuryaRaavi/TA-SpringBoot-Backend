@@ -30,7 +30,7 @@ public class TaskDbWithDsl {
     private static List<String> SORTING_COLUMNS = List.of
             ("taskName", "order", "createdAt", "updatedAt", "dueDate", "priority");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 11, LOC: 32, COG: 9
+    protected OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 11, LOC: 32, COG: 9
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -77,7 +77,7 @@ public class TaskDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter( // CYC: 7, LOC: 43, COG: 6
+    protected BooleanBuilder buildDynamicFilter( // CYC: 7, LOC: 43, COG: 6
             String stageId,
             LocalDate dueDate,
             LocalDate createdAt,

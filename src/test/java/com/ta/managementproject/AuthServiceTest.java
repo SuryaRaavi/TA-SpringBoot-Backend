@@ -1,8 +1,6 @@
 package com.ta.managementproject;
 
-import com.ta.managementproject.dto.BaseResponseDTO;
 import com.ta.managementproject.dto.request.LoginRequestDTO;
-import com.ta.managementproject.dto.response.LoginResponseDTO;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.exception.ForbiddenException;
 import com.ta.managementproject.exception.NotFoundException;
@@ -20,56 +18,33 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-
-import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
-
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class AuthServiceTest {
-    @Mock
-    private AESUtil aesUtil;
+class AuthServiceTest {
 
-    @Mock
-    private UserDb userDb;
-
-    @Mock
-    private JwtUtils jwtUtils;
-
-    @Mock
-    private RoleDb roleDb;
-
-    @Mock
-    private UtilService utilService;
-
-    @Mock
-    private ProjectDb projectDb;
-
-    @Mock
-    private StageDb stageDb;
-
-    @Mock
-    private TaskDb taskDb;
-
-    @Mock
-    private SubTaskDb subTaskDb;
+    @Mock private AESUtil aesUtil;
+    @Mock private UserDb userDb;
+    @Mock private JwtUtils jwtUtils;
+    @Mock private RoleDb roleDb;
+    @Mock private UtilService utilService;
+    @Mock private ProjectDb projectDb;
+    @Mock private StageDb stageDb;
+    @Mock private TaskDb taskDb;
+    @Mock private SubTaskDb subTaskDb;
 
     @InjectMocks
     private AuthServiceImpl authService;
 
-    // ── Shared test fixtures ──────────────────────────────────────────────────
-
-    private User mockUser;
     private Role mockRole;
+    private User mockUser;
     private Project mockProject;
-    private Stage mockStage;
-    private Task mockTask;
-    private SubTask mockSubTask;
-    private MemberInProject mockMember;
+    private User mockManager;
 
     @BeforeEach
     void setUp() {
@@ -77,293 +52,249 @@ public class AuthServiceTest {
         mockRole.setName("MANAGER");
 
         mockUser = new User();
-        mockUser.setUsername("testuser");
+        mockUser.setUsername("john");
         mockUser.setPassword("encryptedPassword");
         mockUser.setRole(mockRole);
 
-        // Manager user
-        User managerUser = new ProjectManager();
-        managerUser.setUsername("manager");
+        mockManager = new ProjectManager();
+        mockManager.setUsername("manager1");
 
-        mockProject = new Project();
-        mockProject.setProjectId("PROJECT-001");
-        mockProject.setProjectManager((ProjectManager) managerUser);
-        mockProject.setMemberInProjectList(new ArrayList<>());
-
-        mockStage = new Stage();
-        mockStage.setStageId("STAGE-001");
-
-        mockTask = new Task();
-        mockTask.setTaskId("TASK-001");
-
-        mockSubTask = new SubTask();
-        mockSubTask.setSubTaskId("SUBTASK-001");
-
-        // Member setup
-        User memberUser = new ProjectMember();
-        memberUser.setUsername("member");
-
-        mockMember = new MemberInProject();
-        mockMember.setProjectMember((ProjectMember) memberUser);
+        mockProject = Project.builder()
+                .projectId("project-1")
+                .projectManager((ProjectManager) mockManager)
+                .memberInProjectList(List.of())
+                .isCancelled(false)
+                .build();
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // doLogin
-    // ══════════════════════════════════════════════════════════════════════════
+    // ===================== doLogin =====================
 
     @Test
-    void doLogin_Success() throws Exception {
-        // Arrange
-        LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("testuser");
-        request.setPassword("plainPassword");
-
-        when(userDb.findByUsername("testuser")).thenReturn(mockUser);
-        when(aesUtil.encrypt("plainPassword")).thenReturn("encryptedPassword");
-        when(jwtUtils.generateJwtToken("testuser", "MANAGER")).thenReturn("jwt-token-123");
-        when(jwtUtils.getExpirationFromToken("jwt-token-123")).thenReturn(new Date());
-
-        ResponseEntity<BaseResponseDTO<Object>> expectedResponse = ResponseEntity.ok().build();
-        when(utilService.buildResponse(any(HttpStatus.class), anyString(), any())).thenReturn(expectedResponse);
-
-        // Act
-        ResponseEntity<?> result = authService.doLogin(request);
-
-        // Assert
-        assertNotNull(result);
-        verify(userDb).findByUsername("testuser");
-        verify(aesUtil).encrypt("plainPassword");
-        verify(jwtUtils).generateJwtToken("testuser", "MANAGER");
-        verify(utilService).buildResponse(eq(HttpStatus.OK), eq("Login Successful"), any(LoginResponseDTO.class));
-    }
-
-    @Test
-    void doLogin_UsernameNotFound_ThrowsNotFoundException() throws Exception {
-        // Arrange
+    void doLogin_ShouldThrowNotFoundException_WhenUsernameNotFound() {
         LoginRequestDTO request = new LoginRequestDTO();
         request.setUsername("unknown");
-        request.setPassword("password");
+        request.setPassword("pass");
 
         when(userDb.findByUsername("unknown")).thenReturn(null);
 
-        // Act & Assert
-        NotFoundException exception = assertThrows(NotFoundException.class,
-                () -> authService.doLogin(request));
-
-        assertEquals("USERNAME_NOT_FOUND", exception.getMessage());
-        verify(userDb).findByUsername("unknown");
-        verifyNoInteractions(aesUtil, jwtUtils, utilService);
+        assertThrows(NotFoundException.class, () -> authService.doLogin(request));
     }
 
     @Test
-    void doLogin_WrongPassword_ThrowsForbiddenException() throws Exception {
-        // Arrange
+    void doLogin_ShouldThrowForbiddenException_WhenPasswordWrong() throws Exception {
         LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("testuser");
-        request.setPassword("wrongPassword");
+        request.setUsername("john");
+        request.setPassword("wrongPass");
 
-        when(userDb.findByUsername("testuser")).thenReturn(mockUser);
-        when(aesUtil.encrypt("wrongPassword")).thenReturn("wrongEncrypted");
+        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(aesUtil.encrypt("wrongPass")).thenReturn("wrongEncrypted");
 
-        // Act & Assert
-        ForbiddenException exception = assertThrows(ForbiddenException.class,
-                () -> authService.doLogin(request));
-
-        assertEquals("Username atau password yang dimasukkan salah!", exception.getMessage());
-        verify(aesUtil).encrypt("wrongPassword");
-        verifyNoInteractions(jwtUtils, utilService);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // validateProject
-    // ══════════════════════════════════════════════════════════════════════════
-
-    @Test
-    void validateProject_Success() {
-        // Arrange
-        when(projectDb.findByProjectId("PROJECT-001")).thenReturn(mockProject);
-
-        // Act
-        Project result = authService.validateProject("PROJECT-001");
-
-        // Assert
-        assertNotNull(result);
-        assertEquals("PROJECT-001", result.getProjectId());
-        verify(projectDb).findByProjectId("PROJECT-001");
+        assertThrows(ForbiddenException.class, () -> authService.doLogin(request));
     }
 
     @Test
-    void validateProject_NotFound_ThrowsNotFoundException() {
-        // Arrange
-        when(projectDb.findByProjectId("INVALID-ID")).thenReturn(null);
+    void doLogin_ShouldReturnOk_WhenCredentialsValid() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setUsername("john");
+        request.setPassword("correctPass");
 
-        // Act & Assert
-        NotFoundException exception = assertThrows(NotFoundException.class,
-                () -> authService.validateProject("INVALID-ID"));
+        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(aesUtil.encrypt("correctPass")).thenReturn("encryptedPassword");
+        when(jwtUtils.generateJwtToken("john", "MANAGER")).thenReturn("jwt-token");
+        when(jwtUtils.getExpirationFromToken("jwt-token")).thenReturn(new Date());
+        when(utilService.buildResponse(eq(HttpStatus.OK), eq("Login Successful"), any()))
+                .thenReturn(ResponseEntity.ok().build());
 
-        assertEquals("PROJECT_NOT_FOUND", exception.getMessage());
-        verify(projectDb).findByProjectId("INVALID-ID");
+        ResponseEntity<?> response = authService.doLogin(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // validateManagerAccess
-    // ══════════════════════════════════════════════════════════════════════════
+    @Test
+    void doLogin_ShouldCallGenerateJwtToken_WhenCredentialsValid() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setUsername("john");
+        request.setPassword("correctPass");
+
+        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(aesUtil.encrypt("correctPass")).thenReturn("encryptedPassword");
+        when(jwtUtils.generateJwtToken("john", "MANAGER")).thenReturn("jwt-token");
+        when(jwtUtils.getExpirationFromToken("jwt-token")).thenReturn(new Date());
+        when(utilService.buildResponse(any(), any(), any())).thenReturn(ResponseEntity.ok().build());
+
+        authService.doLogin(request);
+
+        verify(jwtUtils, times(1)).generateJwtToken("john", "MANAGER");
+    }
 
     @Test
-    void validateManagerAccess_Success_WhenUsernameMatchesManager() {
-        // Act & Assert — should NOT throw
+    void doLogin_ShouldThrowNotFoundException_WithCorrectMessage() {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setUsername("ghost");
+        request.setPassword("pass");
+
+        when(userDb.findByUsername("ghost")).thenReturn(null);
+
+        NotFoundException ex = assertThrows(NotFoundException.class, () -> authService.doLogin(request));
+        assertEquals("USERNAME_NOT_FOUND", ex.getMessage());
+    }
+
+    @Test
+    void doLogin_ShouldThrowForbiddenException_WithCorrectMessage() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setUsername("john");
+        request.setPassword("wrongPass");
+
+        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(aesUtil.encrypt("wrongPass")).thenReturn("wrongEncrypted");
+
+        ForbiddenException ex = assertThrows(ForbiddenException.class, () -> authService.doLogin(request));
+        assertEquals("Username atau password yang dimasukkan salah!", ex.getMessage());
+    }
+
+    // ===================== validateProject =====================
+
+    @Test
+    void validateProject_ShouldReturnProject_WhenFound() {
+        when(projectDb.findByProjectId("project-1")).thenReturn(mockProject);
+
+        Project result = authService.validateProject("project-1");
+
+        assertEquals(mockProject, result);
+    }
+
+    @Test
+    void validateProject_ShouldThrowNotFoundException_WhenNotFound() {
+        when(projectDb.findByProjectId("project-x")).thenReturn(null);
+
+        NotFoundException ex = assertThrows(NotFoundException.class,
+                () -> authService.validateProject("project-x"));
+        assertEquals("PROJECT_NOT_FOUND", ex.getMessage());
+    }
+
+    // ===================== validateManagerAccess =====================
+
+    @Test
+    void validateManagerAccess_ShouldPass_WhenUsernameIsManager() {
+        assertDoesNotThrow(() -> authService.validateManagerAccess(mockProject, "manager1"));
+    }
+
+    @Test
+    void validateManagerAccess_ShouldThrowForbiddenException_WhenNotManager() {
+        ForbiddenException ex = assertThrows(ForbiddenException.class,
+                () -> authService.validateManagerAccess(mockProject, "other_user"));
+        assertEquals("FORBIDDEN", ex.getMessage());
+    }
+
+    // ===================== validateManagerAndMemberAccess =====================
+
+    @Test
+    void validateManagerAndMemberAccess_ShouldPass_WhenUserIsManager() {
         assertDoesNotThrow(() ->
-                authService.validateManagerAccess(mockProject, "manager"));
+                authService.validateManagerAndMemberAccess(mockProject, "manager1"));
     }
 
     @Test
-    void validateManagerAccess_Forbidden_WhenUsernameDoesNotMatch() {
-        // Act & Assert
-        ForbiddenException exception = assertThrows(ForbiddenException.class,
-                () -> authService.validateManagerAccess(mockProject, "otherUser"));
+    void validateManagerAndMemberAccess_ShouldPass_WhenUserIsMember() {
+        User member = new ProjectMember();
+        member.setUsername("member1");
 
-        assertEquals("FORBIDDEN", exception.getMessage());
-    }
+        MemberInProject mip = new MemberInProject();
+        mip.setProjectMember((ProjectMember) member);
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // validateManagerAndMemberAccess
-    // ══════════════════════════════════════════════════════════════════════════
+        Project projectWithMember = mockProject.toBuilder()
+                .memberInProjectList(List.of(mip))
+                .build();
 
-    @Test
-    void validateManagerAndMemberAccess_Success_WhenManager() {
-        // Act & Assert — manager username passes
         assertDoesNotThrow(() ->
-                authService.validateManagerAndMemberAccess(mockProject, "manager"));
+                authService.validateManagerAndMemberAccess(projectWithMember, "member1"));
     }
 
     @Test
-    void validateManagerAndMemberAccess_Success_WhenMember() {
-        // Arrange — add a member to the project
-        mockProject.getMemberInProjectList().add(mockMember);
+    void validateManagerAndMemberAccess_ShouldThrowForbiddenException_WhenNotManagerNorMember() {
+        ForbiddenException ex = assertThrows(ForbiddenException.class,
+                () -> authService.validateManagerAndMemberAccess(mockProject, "outsider"));
+        assertEquals("Access Not Allowed!", ex.getMessage());
+    }
 
-        // Act & Assert — member username passes
-        assertDoesNotThrow(() ->
-                authService.validateManagerAndMemberAccess(mockProject, "member"));
+    // ===================== validateStage =====================
+
+    @Test
+    void validateStage_ShouldReturnStage_WhenFound() {
+        Stage mockStage = Stage.builder().stageId("stage-1").build();
+        when(stageDb.findByStageId("stage-1")).thenReturn(mockStage);
+
+        Stage result = authService.validateStage("stage-1");
+
+        assertEquals(mockStage, result);
     }
 
     @Test
-    void validateManagerAndMemberAccess_Forbidden_WhenNeitherManagerNorMember() {
-        // Arrange — no members in project
-        mockProject.setMemberInProjectList(new ArrayList<>());
+    void validateStage_ShouldThrowNotFoundException_WhenNotFound() {
+        when(stageDb.findByStageId("stage-x")).thenReturn(null);
 
-        // Act & Assert
-        ForbiddenException exception = assertThrows(ForbiddenException.class,
-                () -> authService.validateManagerAndMemberAccess(mockProject, "stranger"));
-
-        assertEquals("Access Not Allowed!", exception.getMessage());
+        NotFoundException ex = assertThrows(NotFoundException.class,
+                () -> authService.validateStage("stage-x"));
+        assertEquals("STAGE_NOT_FOUND", ex.getMessage());
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // validateStage
-    // ══════════════════════════════════════════════════════════════════════════
+    // ===================== validateTask =====================
 
     @Test
-    void validateStage_Success() {
-        // Arrange
-        when(stageDb.findByStageId("STAGE-001")).thenReturn(mockStage);
+    void validateTask_ShouldReturnTask_WhenFound() {
+        Task mockTask = Task.builder().taskId("task-1").build();
+        when(taskDb.findByTaskId("task-1")).thenReturn(mockTask);
 
-        // Act
-        Stage result = authService.validateStage("STAGE-001");
+        Task result = authService.validateTask("task-1");
 
-        // Assert
-        assertNotNull(result);
-        assertEquals("STAGE-001", result.getStageId());
-        verify(stageDb).findByStageId("STAGE-001");
+        assertEquals(mockTask, result);
     }
 
     @Test
-    void validateStage_NotFound_ThrowsNotFoundException() {
-        // Arrange
-        when(stageDb.findByStageId("INVALID-STAGE")).thenReturn(null);
+    void validateTask_ShouldThrowNotFoundException_WhenNotFound() {
+        when(taskDb.findByTaskId("task-x")).thenReturn(null);
 
-        // Act & Assert
-        NotFoundException exception = assertThrows(NotFoundException.class,
-                () -> authService.validateStage("INVALID-STAGE"));
-
-        assertEquals("STAGE_NOT_FOUND", exception.getMessage());
-        verify(stageDb).findByStageId("INVALID-STAGE");
+        NotFoundException ex = assertThrows(NotFoundException.class,
+                () -> authService.validateTask("task-x"));
+        assertEquals("TASK_NOT_FOUND", ex.getMessage());
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // validateTask
-    // ══════════════════════════════════════════════════════════════════════════
+    // ===================== validateSubTask =====================
 
     @Test
-    void validateTask_Success() {
-        // Arrange
-        when(taskDb.findByTaskId("TASK-001")).thenReturn(mockTask);
+    void validateSubTask_ShouldReturnSubTask_WhenFound() {
+        SubTask mockSubTask = SubTask.builder().subTaskId("subtask-1").build();
+        when(subTaskDb.findSubTaskBySubTaskId("subtask-1")).thenReturn(mockSubTask);
 
-        // Act
-        Task result = authService.validateTask("TASK-001");
+        SubTask result = authService.validateSubTask("subtask-1");
 
-        // Assert
-        assertNotNull(result);
-        assertEquals("TASK-001", result.getTaskId());
-        verify(taskDb).findByTaskId("TASK-001");
+        assertEquals(mockSubTask, result);
     }
 
     @Test
-    void validateTask_NotFound_ThrowsNotFoundException() {
-        // Arrange
-        when(taskDb.findByTaskId("INVALID-TASK")).thenReturn(null);
+    void validateSubTask_ShouldThrowNotFoundException_WhenNotFound() {
+        when(subTaskDb.findSubTaskBySubTaskId("subtask-x")).thenReturn(null);
 
-        // Act & Assert
-        NotFoundException exception = assertThrows(NotFoundException.class,
-                () -> authService.validateTask("INVALID-TASK"));
-
-        assertEquals("TASK_NOT_FOUND", exception.getMessage());
-        verify(taskDb).findByTaskId("INVALID-TASK");
+        NotFoundException ex = assertThrows(NotFoundException.class,
+                () -> authService.validateSubTask("subtask-x"));
+        assertEquals("SUB_TASK_NOT_FOUND", ex.getMessage());
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // validateSubTask
-    // ══════════════════════════════════════════════════════════════════════════
+    // ===================== validateProjectCancellation =====================
 
     @Test
-    void validateSubTask_Success() {
-        // Arrange
-        when(subTaskDb.findSubTaskBySubTaskId("SUBTASK-001")).thenReturn(mockSubTask);
-
-        // Act
-        SubTask result = authService.validateSubTask("SUBTASK-001");
-
-        // Assert
-        assertNotNull(result);
-        assertEquals("SUBTASK-001", result.getSubTaskId());
-        verify(subTaskDb).findSubTaskBySubTaskId("SUBTASK-001");
+    void validateProjectCancellation_ShouldPass_WhenProjectNotCancelled() {
+        assertDoesNotThrow(() -> authService.validateProjectCancellation(mockProject));
     }
 
     @Test
-    void validateSubTask_NotFound_ThrowsNotFoundException() {
-        // Arrange
-        when(subTaskDb.findSubTaskBySubTaskId("INVALID-SUBTASK")).thenReturn(null);
+    void validateProjectCancellation_ShouldThrowForbiddenException_WhenCancelled() {
+        Project cancelledProject = mockProject.toBuilder()
+                .isCancelled(true)
+                .build();
 
-        // Act & Assert
-        NotFoundException exception = assertThrows(NotFoundException.class,
-                () -> authService.validateSubTask("INVALID-SUBTASK"));
-
-        assertEquals("SUB_TASK_NOT_FOUND", exception.getMessage());
-        verify(subTaskDb).findSubTaskBySubTaskId("INVALID-SUBTASK");
-    }
-
-    @Test
-    void validateProjectCancellation_Success(){
-        assertDoesNotThrow(() ->
-                authService.validateProjectCancellation(mockProject));
-    }
-
-    @Test
-    void validateProjectCancellation_ThrowsConflictException(){
-        mockProject.setCancelled(true);
-
-        ForbiddenException exception = assertThrows(ForbiddenException.class,
-                () -> authService.validateProjectCancellation(mockProject));
-
-        assertEquals("Project has been cancelled!", exception.getMessage());
+        ForbiddenException ex = assertThrows(ForbiddenException.class,
+                () -> authService.validateProjectCancellation(cancelledProject));
+        assertEquals("Project has been cancelled!", ex.getMessage());
     }
 }

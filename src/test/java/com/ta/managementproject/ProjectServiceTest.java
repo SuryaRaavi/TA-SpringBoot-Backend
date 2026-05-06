@@ -1,528 +1,502 @@
-//package com.ta.managementproject;
-//
-//import com.ta.managementproject.dto.BaseResponseDTO;
-//import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
-//import com.ta.managementproject.dto.response.*;
-//import com.ta.managementproject.entity.*;
-//import com.ta.managementproject.enums.Role;
-//import com.ta.managementproject.exception.BadRequestException;
-//import com.ta.managementproject.exception.ConflictException;
-//import com.ta.managementproject.exception.NotFoundException;
-//import com.ta.managementproject.exception.UnprocessableContentException;
-//import com.ta.managementproject.repository.*;
-//import com.ta.managementproject.security.util.JwtUtils;
-//import com.ta.managementproject.service.UtilService;
-//import com.ta.managementproject.service.auth.AuthService;
-//import com.ta.managementproject.service.project.ProjectServiceImpl;
-//import com.ta.managementproject.service.stage.StageService;
-//import com.ta.managementproject.service.user.UserService;
-//import jakarta.servlet.http.HttpServletRequest;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.junit.jupiter.api.extension.ExtendWith;
-//import org.mockito.InjectMocks;
-//import org.mockito.Mock;
-//import org.mockito.junit.jupiter.MockitoExtension;
-//import org.springframework.data.domain.Page;
-//import org.springframework.data.domain.PageImpl;
-//import org.springframework.data.domain.PageRequest;
-//import org.springframework.data.domain.Pageable;
-//import org.springframework.http.HttpStatus;
-//import org.springframework.http.ResponseEntity;
-//
-//import java.time.Instant;
-//import java.time.LocalDate;
-//import java.util.List;
-//
-//import static org.assertj.core.api.Assertions.assertThat;
-//import static org.assertj.core.api.Assertions.assertThatThrownBy;
-//import static org.mockito.ArgumentMatchers.*;
-//import static org.mockito.Mockito.*;
-//
-//@ExtendWith(MockitoExtension.class)
-//class ProjectServiceTest {
-//
-//    @Mock private ProjectDb projectDb;
-//    @Mock private HttpServletRequest request;
-//    @Mock private JwtUtils jwtUtils;
-//    @Mock private AuthService authService;
-//    @Mock private ProjectManagerDb projectManagerDb;
-//    @Mock private MemberInProjectDb memberInProjectDb;
-//    @Mock private ProjectMemberDb projectMemberDb;
-//    @Mock private UserDb userDb;
-//    @Mock private StageService stageService;
-//    @Mock private UserService userService;
-//    @Mock private UtilService utilService;
-//    @Mock private ProjectDbWithDsl projectDbWithDsl;
-//
-//    @InjectMocks
-//    private ProjectServiceImpl projectService;
-//
-//    private static final String USERNAME   = "user_test";
-//    private static final String PROJECT_ID = "project-001";
-//
-//    private User           mockUser;
-//    private Project        mockProject;
-//    private ProjectManager mockPm;
-//
-//    @BeforeEach
-//    void setUp() {
-//        mockUser = User.builder()
-//                .username(USERNAME)
-//                .build();
-//
-//        mockPm = ProjectManager.builder()
-//                .username(USERNAME)
-//                .fullName("Test PM")
-//                .build();
-//
-//        // isCancelled default false — digunakan di semua happy-path updateProject
-//        mockProject = Project.builder()
-//                .projectId(PROJECT_ID)
-//                .projectName("Test Project")
-//                .description("Test Description")
-//                .projectManager(mockPm)
-//                .startDate(Instant.now())
-//                .endDate(Instant.now().plusSeconds(86400))
-//                .stageList(List.of())
-//                .isCancelled(false)
-//                .build();
-//    }
-//
-//    /* ══════════════════════════════════════════════════════════════════════
-//     * getAllProject
-//     * ══════════════════════════════════════════════════════════════════════ */
-//
-//    @Test
-//    void getAllProject_asProjectManager_shouldCallFindAllWithPmUsername() {
-//        Pageable pageable = PageRequest.of(0, 10);
-//        Page<ProjectResponseDTO> mockPage = new PageImpl<>(List.of());
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userService.getUserRoleByUsername(USERNAME)).thenReturn(Role.PROJECT_MANAGER);
-//        when(projectDbWithDsl.findAll(
-//                eq(USERNAME), isNull(),
-//                isNull(), isNull(), isNull(), isNull(), isNull(),
-//                eq(pageable))
-//        ).thenReturn(mockPage);
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        ResponseEntity<?> result = projectService.getAllProject(
-//                pageable, null, null, null, null, null);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-//        verify(projectDbWithDsl).findAll(
-//                eq(USERNAME), isNull(),
-//                isNull(), isNull(), isNull(), isNull(), isNull(),
-//                eq(pageable));
-//    }
-//
-//    @Test
-//    void getAllProject_asMember_shouldCallFindAllWithMemberUsername() {
-//        Pageable pageable = PageRequest.of(0, 10);
-//        Page<ProjectResponseDTO> mockPage = new PageImpl<>(List.of());
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userService.getUserRoleByUsername(USERNAME)).thenReturn(Role.PROJECT_MEMBER);
-//        when(projectDbWithDsl.findAll(
-//                isNull(), eq(USERNAME),
-//                isNull(), isNull(), isNull(), isNull(), isNull(),
-//                eq(pageable))
-//        ).thenReturn(mockPage);
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        ResponseEntity<?> result = projectService.getAllProject(
-//                pageable, null, null, null, null, null);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-//        verify(projectDbWithDsl).findAll(
-//                isNull(), eq(USERNAME),
-//                isNull(), isNull(), isNull(), isNull(), isNull(),
-//                eq(pageable));
-//    }
-//
-//    @Test
-//    void getAllProject_whenEndDateBeforeStartDate_shouldThrowBadRequestException() {
-//        Pageable pageable = PageRequest.of(0, 10);
-//        LocalDate startDate = LocalDate.now();
-//        LocalDate endDate   = startDate.minusDays(1);
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userService.getUserRoleByUsername(USERNAME)).thenReturn(Role.PROJECT_MANAGER);
-//
-//        assertThatThrownBy(() ->
-//                projectService.getAllProject(pageable, startDate, endDate, null, null, null))
-//                .isInstanceOf(BadRequestException.class)
-//                .hasMessage("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
-//    }
-//
-//    /* ══════════════════════════════════════════════════════════════════════
-//     * addNewProject
-//     * ══════════════════════════════════════════════════════════════════════ */
-//
-//    @Test
-//    void addNewProject_withValidRequest_shouldSaveAndReturnCreated() {
-//        CreateUpdateProjectRequestDTO dto = new CreateUpdateProjectRequestDTO();
-//        dto.setProjectName("New Project");
-//        dto.setDescription("Desc");
-//        dto.setStartDate(LocalDate.now());
-//        dto.setEndDate(LocalDate.now().plusDays(10));
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(projectManagerDb.findByUsername(USERNAME)).thenReturn(mockPm);
-//        when(utilService.buildResponse(eq(HttpStatus.CREATED), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-//
-//        ResponseEntity<?> result = projectService.addNewProject(dto);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-//        verify(projectDb).save(any(Project.class));
-//    }
-//
-//    @Test
-//    void addNewProject_whenEndDateBeforeStartDate_shouldThrowBadRequestException() {
-//        CreateUpdateProjectRequestDTO dto = new CreateUpdateProjectRequestDTO();
-//        dto.setStartDate(LocalDate.now());
-//        dto.setEndDate(LocalDate.now().minusDays(1));
-//
-//        assertThatThrownBy(() -> projectService.addNewProject(dto))
-//                .isInstanceOf(BadRequestException.class)
-//                .hasMessage("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
-//    }
-//
-//    /* ══════════════════════════════════════════════════════════════════════
-//     * updateProject
-//     * ══════════════════════════════════════════════════════════════════════
-//     *
-//     * Alur di service:
-//     *   1. validateProject(projectId)
-//     *   2. validateManagerAccess(project, username)
-//     *   3. if (project.isCancelled()) throw ConflictException   ← pengecekan LANGSUNG
-//     *   4. validasi tanggal
-//     *   5. projectDb.save(...)
-//     *
-//     * CATATAN PENTING:
-//     *   updateProject() TIDAK memanggil authService.validateProjectCancellation().
-//     *   Pengecekan cancelled dilakukan secara manual lewat project.isCancelled().
-//     *   Oleh karena itu TIDAK ADA stub untuk validateProjectCancellation di sini.
-//     * ══════════════════════════════════════════════════════════════════════ */
-//
-//    @Test
-//    void updateProject_withValidRequest_shouldSaveUpdatedProject() {
-//        CreateUpdateProjectRequestDTO dto = new CreateUpdateProjectRequestDTO();
-//        dto.setProjectName("Updated Project");
-//        dto.setStartDate(LocalDate.now());
-//        dto.setEndDate(LocalDate.now().plusDays(5));
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
-//        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
-//        // mockProject.isCancelled() == false → tidak melempar exception
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        ResponseEntity<?> result = projectService.updateProject(PROJECT_ID, dto);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-//        verify(projectDb).save(any(Project.class));
-//        // Pastikan validateProjectCancellation (authService) TIDAK dipanggil
-//        verify(authService, never()).validateProjectCancellation(any());
-//    }
-//
-//    @Test
-//    void updateProject_whenProjectIsCancelled_shouldThrowConflictException() {
-//        // Project dengan isCancelled = true
-//        Project cancelledProject = mockProject.toBuilder()
-//                .isCancelled(true)
-//                .build();
-//
-//        CreateUpdateProjectRequestDTO dto = new CreateUpdateProjectRequestDTO();
-//        dto.setStartDate(LocalDate.now());
-//        dto.setEndDate(LocalDate.now().plusDays(5));
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(cancelledProject);
-//        doNothing().when(authService).validateManagerAccess(cancelledProject, USERNAME);
-//
-//        assertThatThrownBy(() -> projectService.updateProject(PROJECT_ID, dto))
-//                .isInstanceOf(ConflictException.class)
-//                .hasMessage("Update project is not allowed, project status is cancelled!");
-//
-//        // projectDb.save tidak boleh dipanggil saat project cancelled
-//        verify(projectDb, never()).save(any());
-//    }
-//
-//    @Test
-//    void updateProject_whenEndDateBeforeStartDate_shouldThrowBadRequestException() {
-//        CreateUpdateProjectRequestDTO dto = new CreateUpdateProjectRequestDTO();
-//        dto.setStartDate(LocalDate.now());
-//        dto.setEndDate(LocalDate.now().minusDays(1));
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
-//        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
-//        // isCancelled = false → lolos pengecekan cancelled, baru validasi tanggal
-//
-//        assertThatThrownBy(() -> projectService.updateProject(PROJECT_ID, dto))
-//                .isInstanceOf(BadRequestException.class)
-//                .hasMessage("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
-//
-//        verify(projectDb, never()).save(any());
-//    }
-//
-//    @Test
-//    void updateProject_withNullFields_shouldKeepOriginalValues() {
-//        // Semua field null → service pertahankan nilai lama dari project
-//        CreateUpdateProjectRequestDTO dto = new CreateUpdateProjectRequestDTO();
-//        dto.setProjectName(null);
-//        dto.setDescription(null);
-//        // startDate & endDate harus di-set agar validasi tanggal tidak NPE;
-//        // gunakan nilai yang sama agar tidak melempar exception
-//        dto.setStartDate(LocalDate.now());
-//        dto.setEndDate(LocalDate.now().plusDays(1));
-//        dto.setIsCancelled(null);
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
-//        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        projectService.updateProject(PROJECT_ID, dto);
-//
-//        verify(projectDb).save(argThat(p ->
-//                "Test Project".equals(p.getProjectName()) &&
-//                        "Test Description".equals(p.getDescription()) &&
-//                        !p.isCancelled()
-//        ));
-//    }
-//
-//    /* ══════════════════════════════════════════════════════════════════════
-//     * getProjectDetail
-//     * ══════════════════════════════════════════════════════════════════════ */
-//
-//    @Test
-//    void getProjectDetail_withValidAccess_shouldReturnProjectDetail() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
-//        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        ResponseEntity<?> result = projectService.getProjectDetail(PROJECT_ID);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-//        verify(authService, atLeast(1)).validateManagerAndMemberAccess(mockProject, USERNAME);
-//    }
-//
-//    @Test
-//    void getProjectDetail_withNoStages_shouldNotCallStageService() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
-//        doNothing().when(authService).validateManagerAndMemberAccess(mockProject, USERNAME);
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        projectService.getProjectDetail(PROJECT_ID);
-//
-//        verify(stageService, never()).getStageStatistics(any());
-//    }
-//
-//    @Test
-//    void getProjectDetail_withStages_shouldAggregateStatisticsFromEachStage() {
-//        Stage mockStage = Stage.builder().stageId("stage-001").build();
-//        Project projectWithStages = mockProject.toBuilder()
-//                .stageList(List.of(mockStage))
-//                .build();
-//
-//        ProgressResponseDTO stageProgress = ProgressResponseDTO.builder()
-//                .totalTask(10L)
-//                .finishedTask(5L)
-//                .inProgressTask(3L)
-//                .todoTask(2L)
-//                .build();
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(projectWithStages);
-//        doNothing().when(authService).validateManagerAndMemberAccess(projectWithStages, USERNAME);
-//        when(stageService.getStageStatistics("stage-001")).thenReturn(stageProgress);
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        ResponseEntity<?> result = projectService.getProjectDetail(PROJECT_ID);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-//        verify(stageService).getStageStatistics("stage-001");
-//    }
-//
-//    /* ══════════════════════════════════════════════════════════════════════
-//     * deleteProjectById
-//     * ══════════════════════════════════════════════════════════════════════ */
-//
-//    @Test
-//    void deleteProjectById_withNoStages_shouldDeleteDirectly() {
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(mockProject);
-//        doNothing().when(authService).validateManagerAccess(mockProject, USERNAME);
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        ResponseEntity<?> result = projectService.deleteProjectById(PROJECT_ID);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-//        verify(projectDb).delete(mockProject);
-//        verify(stageService, never()).deleteStageById(any(), any());
-//    }
-//
-//    @Test
-//    void deleteProjectById_withStages_shouldDeleteEachStageThenProject() {
-//        Stage mockStage = Stage.builder().stageId("stage-001").build();
-//        Project projectWithStages = mockProject.toBuilder()
-//                .stageList(List.of(mockStage))
-//                .build();
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(userDb.findByUsername(USERNAME)).thenReturn(mockUser);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(projectWithStages);
-//        doNothing().when(authService).validateManagerAccess(projectWithStages, USERNAME);
-//        doReturn(ResponseEntity.ok().build())
-//                .when(stageService).deleteStageById(PROJECT_ID, "stage-001");
-//        when(utilService.buildResponse(eq(HttpStatus.OK), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.ok().build());
-//
-//        ResponseEntity<?> result = projectService.deleteProjectById(PROJECT_ID);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-//        verify(stageService).deleteStageById(PROJECT_ID, "stage-001");
-//        verify(projectDb).delete(projectWithStages);
-//    }
-//
-//    /* ══════════════════════════════════════════════════════════════════════
-//     * generateJoinCode
-//     * ══════════════════════════════════════════════════════════════════════ */
-//
-//    @Test
-//    void generateJoinCode_whenJoinCodeIsNull_shouldGenerateAndSave() {
-//        Project projectNoCode = mockProject.toBuilder()
-//                .joinCode(null)
-//                .joinCodeExpiredAt(null)
-//                .build();
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(projectNoCode);
-//        doNothing().when(authService).validateManagerAccess(projectNoCode, USERNAME);
-//        doNothing().when(authService).validateProjectCancellation(projectNoCode);
-//        when(utilService.buildResponse(eq(HttpStatus.CREATED), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-//
-//        ResponseEntity<?> result = projectService.generateJoinCode(PROJECT_ID);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-//        verify(projectDb).save(projectNoCode);
-//    }
-//
-//    @Test
-//    void generateJoinCode_whenJoinCodeStillValid_shouldNotRegenerateCode() {
-//        Project projectWithValidCode = mockProject.toBuilder()
-//                .joinCode("ABCD1234")
-//                .joinCodeExpiredAt(Instant.now().plusSeconds(3600))
-//                .build();
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(projectWithValidCode);
-//        doNothing().when(authService).validateManagerAccess(projectWithValidCode, USERNAME);
-//        doNothing().when(authService).validateProjectCancellation(projectWithValidCode);
-//        when(utilService.buildResponse(eq(HttpStatus.CREATED), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-//
-//        projectService.generateJoinCode(PROJECT_ID);
-//
-//        verify(projectDb, never()).save(any());
-//    }
-//
-//    @Test
-//    void generateJoinCode_whenJoinCodeExpired_shouldRegenerateAndSave() {
-//        Project projectExpiredCode = mockProject.toBuilder()
-//                .joinCode("EXPIRED1")
-//                .joinCodeExpiredAt(Instant.now().minusSeconds(100))
-//                .build();
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(authService.validateProject(PROJECT_ID)).thenReturn(projectExpiredCode);
-//        doNothing().when(authService).validateManagerAccess(projectExpiredCode, USERNAME);
-//        doNothing().when(authService).validateProjectCancellation(projectExpiredCode);
-//        when(utilService.buildResponse(eq(HttpStatus.CREATED), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-//
-//        projectService.generateJoinCode(PROJECT_ID);
-//
-//        verify(projectDb).save(projectExpiredCode);
-//    }
-//
-//    /* ══════════════════════════════════════════════════════════════════════
-//     * joinProject
-//     * ══════════════════════════════════════════════════════════════════════ */
-//
-//    @Test
-//    void joinProject_withValidCode_shouldSaveMemberAndReturnCreated() {
-//        String joinCode = "VALID123";
-//        ProjectMember mockMember = ProjectMember.builder().username(USERNAME).build();
-//        Project projectWithCode = mockProject.toBuilder()
-//                .joinCode(joinCode)
-//                .joinCodeExpiredAt(Instant.now().plusSeconds(3600))
-//                .build();
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(projectMemberDb.findByUsername(USERNAME)).thenReturn(mockMember);
-//        when(projectDb.findByJoinCode(joinCode)).thenReturn(projectWithCode);
-//        doNothing().when(authService).validateProjectCancellation(projectWithCode);
-//        when(utilService.buildResponse(eq(HttpStatus.CREATED), eq("SUCCESS"), any()))
-//                .thenReturn(ResponseEntity.status(HttpStatus.CREATED).build());
-//
-//        ResponseEntity<?> result = projectService.joinProject(joinCode);
-//
-//        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-//        verify(memberInProjectDb).save(any(MemberInProject.class));
-//    }
-//
-//    @Test
-//    void joinProject_whenProjectNotFound_shouldThrowNotFoundException() {
-//        String joinCode = "NOTFOUND";
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(projectMemberDb.findByUsername(USERNAME)).thenReturn(new ProjectMember());
-//        when(projectDb.findByJoinCode(joinCode)).thenReturn(null);
-//
-//        assertThatThrownBy(() -> projectService.joinProject(joinCode))
-//                .isInstanceOf(NotFoundException.class)
-//                .hasMessage("PROJECT_NOT_FOUND!");
-//    }
-//
-//    @Test
-//    void joinProject_whenJoinCodeExpired_shouldThrowUnprocessableContentException() {
-//        String joinCode = "EXPIRED1";
-//        Project expiredProject = mockProject.toBuilder()
-//                .joinCode(joinCode)
-//                .joinCodeExpiredAt(Instant.now().minusSeconds(100))
-//                .build();
-//
-//        when(jwtUtils.getUserNameFromRequest(request)).thenReturn(USERNAME);
-//        when(projectMemberDb.findByUsername(USERNAME)).thenReturn(new ProjectMember());
-//        when(projectDb.findByJoinCode(joinCode)).thenReturn(expiredProject);
-//        doNothing().when(authService).validateProjectCancellation(expiredProject);
-//
-//        assertThatThrownBy(() -> projectService.joinProject(joinCode))
-//                .isInstanceOf(UnprocessableContentException.class)
-//                .hasMessage("Join code has beed expired!");
-//    }
-//}
+package com.ta.managementproject;
+
+import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
+import com.ta.managementproject.dto.response.ProjectResponseDTO;
+import com.ta.managementproject.entity.*;
+import com.ta.managementproject.exception.BadRequestException;
+import com.ta.managementproject.exception.ConflictException;
+import com.ta.managementproject.exception.NotFoundException;
+import com.ta.managementproject.exception.UnprocessableContentException;
+import com.ta.managementproject.repository.*;
+import com.ta.managementproject.service.UtilService;
+import com.ta.managementproject.service.auth.AuthService;
+import com.ta.managementproject.service.project.ProjectServiceImpl;
+import com.ta.managementproject.service.user.UserService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import com.ta.managementproject.security.util.JwtUtils;
+
+@ExtendWith(MockitoExtension.class)
+class ProjectServiceTest {
+
+    @Mock private ProjectDb projectDb;
+    @Mock private AuthService authService;
+    @Mock private ProjectManagerDb projectManagerDb;
+    @Mock private MemberInProjectDb memberInProjectDb;
+    @Mock private ProjectMemberDb projectMemberDb;
+    @Mock private UserDb userDb;
+    @Mock private UserService userService;
+    @Mock private UtilService utilService;
+    @Mock private ProjectDbWithDsl projectDbWithDsl;
+
+    @InjectMocks
+    private ProjectServiceImpl projectService;
+
+    private MockedStatic<JwtUtils> jwtUtilsMock;
+
+    private User mockUser;
+    private ProjectManager mockPm;
+    private Project mockProject;
+    private CreateUpdateProjectRequestDTO mockRequest;
+
+    @BeforeEach
+    void setUp() {
+        jwtUtilsMock = mockStatic(JwtUtils.class);
+        jwtUtilsMock.when(JwtUtils::getCurrentUsername).thenReturn("manager1");
+
+        mockPm = new ProjectManager();
+        mockPm.setUsername("manager1");
+        mockPm.setFullName("Manager One");
+
+        mockUser = new User();
+        mockUser.setUsername("manager1");
+
+        mockProject = Project.builder()
+                .projectId("project-1")
+                .projectName("Project Alpha")
+                .description("Desc")
+                .projectManager(mockPm)
+                .startDate(Instant.parse("2024-01-01T00:00:00Z"))
+                .endDate(Instant.parse("2024-12-31T00:00:00Z"))
+                .createdAt(Instant.now())
+                .memberInProjectList(List.of())
+                .isCancelled(false)
+                .joinCode(null)
+                .joinCodeExpiredAt(Instant.now().minusSeconds(1000))
+                .build();
+
+        mockRequest = new CreateUpdateProjectRequestDTO();
+        mockRequest.setProjectName("Project Alpha");
+        mockRequest.setDescription("Desc");
+        mockRequest.setStartDate(LocalDate.of(2024, 1, 1));
+        mockRequest.setEndDate(LocalDate.of(2024, 12, 31));
+    }
+
+    @AfterEach
+    void tearDown() {
+        jwtUtilsMock.close();
+    }
+
+    // Helper: stub utilService.buildResponse
+    private void stubBuildResponse(HttpStatus status) {
+        when(utilService.buildResponse(eq(status), anyString(), any()))
+                .thenReturn(ResponseEntity.status(status).build());
+    }
+
+    // Helper: stub assignToDto dependencies
+    private void stubAssignToDto() {
+        when(projectDb.getProjectStatus(anyString())).thenReturn("ON_TRACK");
+    }
+
+    // ===================== getAllProject =====================
+
+    @Test
+    void getAllProject_ShouldReturnOk_WhenNoDateFilter() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ProjectResponseDTO> page = new PageImpl<>(List.of());
+
+        when(projectDbWithDsl.findAll(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(page);
+        stubBuildResponse(HttpStatus.OK);
+
+        ResponseEntity<?> result = projectService.getAllProject(
+                pageable, null, null, null, null, null);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void getAllProject_ShouldThrowBadRequestException_WhenEndDateBeforeStartDate() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                projectService.getAllProject(
+                        pageable,
+                        LocalDate.of(2024, 6, 1),
+                        LocalDate.of(2024, 1, 1),
+                        null, null, null
+                )
+        );
+
+        assertEquals("Tanggal mulai tidak boleh lebih dari tanggal selesai!", ex.getMessage());
+    }
+
+    @Test
+    void getAllProject_ShouldNotThrow_WhenStartDateEqualsEndDate() {
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDate date = LocalDate.of(2024, 6, 1);
+        Page<ProjectResponseDTO> page = new PageImpl<>(List.of());
+
+        when(projectDbWithDsl.findAll(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(page);
+        stubBuildResponse(HttpStatus.OK);
+
+        assertDoesNotThrow(() ->
+                projectService.getAllProject(pageable, date, date, null, null, null));
+    }
+
+    @Test
+    void getAllProject_ShouldCallProjectDbWithDsl_WhenValidRequest() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ProjectResponseDTO> page = new PageImpl<>(List.of());
+
+        when(projectDbWithDsl.findAll(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(page);
+        stubBuildResponse(HttpStatus.OK);
+
+        projectService.getAllProject(pageable, null, null, null, null, null);
+
+        verify(projectDbWithDsl, times(1))
+                .findAll(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    // ===================== addNewProject =====================
+
+    @Test
+    void addNewProject_ShouldReturnCreated_WhenValidRequest() {
+        when(projectManagerDb.findByUsername("manager1")).thenReturn(mockPm);
+        when(projectDb.save(any())).thenReturn(mockProject);
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.CREATED);
+
+        ResponseEntity<?> result = projectService.addNewProject(mockRequest);
+
+        assertEquals(HttpStatus.CREATED, result.getStatusCode());
+    }
+
+    @Test
+    void addNewProject_ShouldThrowBadRequestException_WhenEndDateBeforeStartDate() {
+        mockRequest.setStartDate(LocalDate.of(2024, 12, 31));
+        mockRequest.setEndDate(LocalDate.of(2024, 1, 1));
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                projectService.addNewProject(mockRequest));
+
+        assertEquals("Tanggal mulai tidak boleh lebih dari tanggal selesai!", ex.getMessage());
+    }
+
+    @Test
+    void addNewProject_ShouldCallProjectDbSave_WhenValidRequest() {
+        when(projectManagerDb.findByUsername("manager1")).thenReturn(mockPm);
+        when(projectDb.save(any())).thenReturn(mockProject);
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.CREATED);
+
+        projectService.addNewProject(mockRequest);
+
+        verify(projectDb, times(1)).save(any(Project.class));
+    }
+
+    // ===================== updateProject =====================
+
+    @Test
+    void updateProject_ShouldReturnOk_WhenValidRequest() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        when(projectDb.save(any())).thenReturn(mockProject);
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.OK);
+
+        ResponseEntity<?> result = projectService.updateProject("project-1", mockRequest);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void updateProject_ShouldThrowConflictException_WhenProjectCancelled() {
+        Project cancelledProject = mockProject.toBuilder().isCancelled(true).build();
+
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(cancelledProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+
+        assertThrows(ConflictException.class, () ->
+                projectService.updateProject("project-1", mockRequest));
+    }
+
+    @Test
+    void updateProject_ShouldThrowBadRequestException_WhenEndDateBeforeStartDate() {
+        mockRequest.setStartDate(LocalDate.of(2024, 12, 31));
+        mockRequest.setEndDate(LocalDate.of(2024, 1, 1));
+
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+
+        assertThrows(BadRequestException.class, () ->
+                projectService.updateProject("project-1", mockRequest));
+    }
+
+    @Test
+    void updateProject_ShouldCallValidateManagerAccess() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        when(projectDb.save(any())).thenReturn(mockProject);
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.OK);
+
+        projectService.updateProject("project-1", mockRequest);
+
+        verify(authService, times(1)).validateManagerAccess(any(), anyString());
+    }
+
+    // ===================== getProjectDetail =====================
+
+    @Test
+    void getProjectDetail_ShouldReturnOk_WhenValidAccess() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.OK);
+
+        ResponseEntity<?> result = projectService.getProjectDetail("project-1");
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void getProjectDetail_ShouldThrowNotFoundException_WhenProjectNotFound() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-x"))
+                .thenThrow(new NotFoundException("PROJECT_NOT_FOUND"));
+
+        assertThrows(NotFoundException.class, () ->
+                projectService.getProjectDetail("project-x"));
+    }
+
+    @Test
+    void getProjectDetail_ShouldCallValidateManagerAndMemberAccess() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.OK);
+
+        projectService.getProjectDetail("project-1");
+
+        verify(authService, times(1)).validateManagerAndMemberAccess(any(), anyString());
+    }
+
+    // ===================== deleteProjectById =====================
+
+    @Test
+    void deleteProjectById_ShouldReturnOk_WhenValidRequest() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        doNothing().when(projectDb).delete(any());
+        stubBuildResponse(HttpStatus.OK);
+
+        ResponseEntity<?> result = projectService.deleteProjectById("project-1");
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void deleteProjectById_ShouldCallSoftDeleteMethods() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        doNothing().when(projectDb).delete(any());
+        stubBuildResponse(HttpStatus.OK);
+
+        projectService.deleteProjectById("project-1");
+
+        verify(projectDb, times(1)).softDeleteSubTaskByProjectId("project-1");
+        verify(projectDb, times(1)).softDeleteTaskByProjectId("project-1");
+        verify(projectDb, times(1)).softDeleteStageByProjectId("project-1");
+        verify(projectDb, times(1)).delete(mockProject);
+    }
+
+    @Test
+    void deleteProjectById_ShouldThrowNotFoundException_WhenProjectNotFound() {
+        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(authService.validateProject("project-x"))
+                .thenThrow(new NotFoundException("PROJECT_NOT_FOUND"));
+
+        assertThrows(NotFoundException.class, () ->
+                projectService.deleteProjectById("project-x"));
+    }
+
+    // ===================== generateJoinCode =====================
+
+    @Test
+    void generateJoinCode_ShouldReturnCreated_WhenJoinCodeExpired() {
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        doNothing().when(authService).validateProjectCancellation(any());
+        when(projectDb.save(any())).thenReturn(mockProject);
+        stubBuildResponse(HttpStatus.CREATED);
+
+        ResponseEntity<?> result = projectService.generateJoinCode("project-1");
+
+        assertEquals(HttpStatus.CREATED, result.getStatusCode());
+        verify(projectDb, times(1)).save(any());
+    }
+
+    @Test
+    void generateJoinCode_ShouldNotSave_WhenJoinCodeStillValid() {
+        Project validCodeProject = mockProject.toBuilder()
+                .joinCode("validcode1234")
+                .joinCodeExpiredAt(Instant.now().plusSeconds(86400))
+                .build();
+
+        when(authService.validateProject("project-1")).thenReturn(validCodeProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        doNothing().when(authService).validateProjectCancellation(any());
+        stubBuildResponse(HttpStatus.CREATED);
+
+        projectService.generateJoinCode("project-1");
+
+        verify(projectDb, never()).save(any());
+    }
+
+    @Test
+    void generateJoinCode_ShouldThrowNotFoundException_WhenProjectNotFound() {
+        when(authService.validateProject("project-x"))
+                .thenThrow(new NotFoundException("PROJECT_NOT_FOUND"));
+
+        assertThrows(NotFoundException.class, () ->
+                projectService.generateJoinCode("project-x"));
+    }
+
+    // ===================== joinProject =====================
+
+    @Test
+    void joinProject_ShouldReturnCreated_WhenJoinCodeValid() {
+        Project validCodeProject = mockProject.toBuilder()
+                .joinCode("validcode1234")
+                .joinCodeExpiredAt(Instant.now().plusSeconds(86400))
+                .build();
+
+        ProjectMember pmb = new ProjectMember();
+        pmb.setUsername("manager1");
+
+        when(projectMemberDb.findByUsername("manager1")).thenReturn(pmb);
+        when(projectDb.findByJoinCode("validcode1234")).thenReturn(validCodeProject);
+        doNothing().when(authService).validateProjectCancellation(any());
+        when(memberInProjectDb.save(any())).thenReturn(new MemberInProject());
+        stubBuildResponse(HttpStatus.CREATED);
+
+        ResponseEntity<?> result = projectService.joinProject("validcode1234");
+
+        assertEquals(HttpStatus.CREATED, result.getStatusCode());
+    }
+
+    @Test
+    void joinProject_ShouldThrowNotFoundException_WhenJoinCodeNotFound() {
+        when(projectMemberDb.findByUsername("manager1")).thenReturn(new ProjectMember());
+        when(projectDb.findByJoinCode("invalidcode")).thenReturn(null);
+
+        assertThrows(NotFoundException.class, () ->
+                projectService.joinProject("invalidcode"));
+    }
+
+    @Test
+    void joinProject_ShouldThrowUnprocessableContentException_WhenJoinCodeExpired() {
+        when(projectMemberDb.findByUsername("manager1")).thenReturn(new ProjectMember());
+        when(projectDb.findByJoinCode("expiredcode")).thenReturn(mockProject);
+        doNothing().when(authService).validateProjectCancellation(any());
+
+        assertThrows(UnprocessableContentException.class, () ->
+                projectService.joinProject("expiredcode"));
+    }
+
+    @Test
+    void joinProject_ShouldCallMemberInProjectDbSave_WhenJoinCodeValid() {
+        Project validCodeProject = mockProject.toBuilder()
+                .joinCode("validcode1234")
+                .joinCodeExpiredAt(Instant.now().plusSeconds(86400))
+                .build();
+
+        ProjectMember pmb = new ProjectMember();
+        pmb.setUsername("manager1");
+
+        when(projectMemberDb.findByUsername("manager1")).thenReturn(pmb);
+        when(projectDb.findByJoinCode("validcode1234")).thenReturn(validCodeProject);
+        doNothing().when(authService).validateProjectCancellation(any());
+        when(memberInProjectDb.save(any())).thenReturn(new MemberInProject());
+        stubBuildResponse(HttpStatus.CREATED);
+
+        projectService.joinProject("validcode1234");
+
+        verify(memberInProjectDb, times(1)).save(any(MemberInProject.class));
+    }
+
+    // ===================== cancelProject =====================
+
+    @Test
+    void cancelProject_ShouldReturnOk_WhenValidRequest() {
+        Project cancelledProject = mockProject.toBuilder().isCancelled(true).build();
+
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        when(projectDb.save(any())).thenReturn(cancelledProject);
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.OK);
+
+        ResponseEntity<?> result = projectService.cancelProject("project-1");
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void cancelProject_ShouldSaveProjectWithCancelledTrue() {
+        Project cancelledProject = mockProject.toBuilder().isCancelled(true).build();
+
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        when(projectDb.save(any())).thenReturn(cancelledProject);
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.OK);
+
+        projectService.cancelProject("project-1");
+
+        verify(projectDb).save(argThat(Project::isCancelled));
+    }
+
+    @Test
+    void cancelProject_ShouldThrowNotFoundException_WhenProjectNotFound() {
+        when(authService.validateProject("project-x"))
+                .thenThrow(new NotFoundException("PROJECT_NOT_FOUND"));
+
+        assertThrows(NotFoundException.class, () ->
+                projectService.cancelProject("project-x"));
+    }
+
+    @Test
+    void cancelProject_ShouldCallValidateManagerAccess() {
+        Project cancelledProject = mockProject.toBuilder().isCancelled(true).build();
+
+        when(authService.validateProject("project-1")).thenReturn(mockProject);
+        doNothing().when(authService).validateManagerAccess(any(), anyString());
+        when(projectDb.save(any())).thenReturn(cancelledProject);
+        stubAssignToDto();
+        stubBuildResponse(HttpStatus.OK);
+
+        projectService.cancelProject("project-1");
+
+        verify(authService, times(1)).validateManagerAccess(any(), eq("manager1"));
+    }
+}

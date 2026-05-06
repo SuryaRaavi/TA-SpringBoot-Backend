@@ -31,7 +31,7 @@ public class SubTaskDbWithDsl {
     private static List<String> SORTING_COLUMNS = List.of
             ("subTaskName", "order", "createdAt", "updatedAt", "dueDate");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29, COG: 9
+    protected OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29, COG: 9
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -74,7 +74,7 @@ public class SubTaskDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 39, COG: 5
+    protected BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 39, COG: 5
             String taskId,
             LocalDate dueDate,
             LocalDate createdAt,

@@ -36,7 +36,7 @@ public class ProjectDbWithDsl {
 
     private static List<String> SORTING_COLUMNS = List.of("projectName", "startDate", "endDate", "createdAt", "updatedAt");
 
-    private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29, COG: 9
+    protected OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) { // CYC: 10, LOC: 29, COG: 9
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         for (Sort.Order order : pageable.getSort()) {
@@ -79,7 +79,7 @@ public class ProjectDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    private BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 37, COG: 5
+    protected BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 37, COG: 5
             String username,
             LocalDate startDate,
             LocalDate endDate,

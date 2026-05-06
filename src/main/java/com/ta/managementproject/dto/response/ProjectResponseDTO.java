@@ -9,6 +9,7 @@ import java.time.Instant;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 @SuperBuilder(toBuilder = true)
 public class ProjectResponseDTO {
     private String projectId;
