@@ -67,9 +67,9 @@ public class StageServiceImpl implements StageService{
 
     @Override // Total CYC: 18, LOC: 99, COG: 13
     public ResponseEntity<?> getAllStage(String projectId, Pageable pageable, LocalDate createdAt, LocalDate updatedAt, String keyword) {  // CYC: 1, LOC: 6, COG: 0
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
-        Page<StageResponseDTO> stageList = stageDbWithDsl.findAll(projectId, createdAt, updatedAt, keyword, username, pageable); // CYC: 15, LOC: 81, COG: 13
+        Page<StageResponseDTO> stageList = stageDbWithDsl.findAll(projectId, createdAt, updatedAt, keyword, email, pageable); // CYC: 15, LOC: 81, COG: 13
 
         // CYC: 1, LOC: 9, COG: 0
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", stageList);
@@ -77,11 +77,11 @@ public class StageServiceImpl implements StageService{
 
     @Override // Total CYC: 9, LOC: 53, COG: 3
     public ResponseEntity<?> getStage(String stageId){ // CYC: 1, LOC: 7, COG: 0
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
         Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAndMemberAccess(stage.getProject(), username); // CYC: 3, LOC: 10, COG: 2
+        authService.validateManagerAndMemberAccess(stage.getProject(), email); // CYC: 3, LOC: 10, COG: 2
 
         // CYC: 1, LOC: 9, COG: 0
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(stage)); // CYC: 1, LOC: 16, COG: 0
@@ -90,11 +90,11 @@ public class StageServiceImpl implements StageService{
     @Override // Total CYC: 10, LOC: 65, COG: 3
     @Transactional
     public ResponseEntity<?> addNewStage(String projectId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 1, LOC: 17, COG: 0
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
         Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6, COG: 1
+        authService.validateManagerAccess(project, email); // CYC: 2, LOC: 6, COG: 1
         authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
 
         Stage newStage = Stage.builder()
@@ -113,11 +113,11 @@ public class StageServiceImpl implements StageService{
 
     @Override // Total CYC: 12, LOC: 62, COG: 5
     public ResponseEntity<?> editStage(String stageId, CreateUpdateStageRequestDTO requestDTO) { // CYC: 3, LOC: 14, COG: 2
-        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+        User user = userDb.findByEmail(JwtUtils.getCurrentEmail()); // CYC: 1, LOC: 3, COG: 0
 
         Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(stage.getProject(), user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+        authService.validateManagerAccess(stage.getProject(), user.getEmail()); // CYC: 2, LOC: 6, COG: 1
         authService.validateProjectCancellation(stage.getProject()); // CYC: 2, LOC: 6, COG: 1
 
         Stage updatedStage = stageDb.save(
@@ -134,11 +134,11 @@ public class StageServiceImpl implements StageService{
     @Override // Total CYC: 12, LOC: 70, COG: 6
     @Transactional
     public ResponseEntity<?> reorderStage(String projectId, ReorderRequestDTO requestDTO) { // CYC: 3, LOC: 22, COG: 3
-        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+        User user = userDb.findByEmail(JwtUtils.getCurrentEmail()); // CYC: 1, LOC: 3, COG: 0
         Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
         int totalStage = project.getStageList().size();
 
-        authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+        authService.validateManagerAccess(project, user.getEmail()); // CYC: 2, LOC: 6, COG: 1
         authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
 
         Stage stage = stageDb.findByStageId(requestDTO.getId());
@@ -165,10 +165,10 @@ public class StageServiceImpl implements StageService{
     @Override // Total CYC: 11, LOC: 66, COG: 4
     @Transactional
     public ResponseEntity<?> deleteStageById(String projectId, String stageId) { // CYC: 1, LOC: 16, COG: 0
-            User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+            User user = userDb.findByEmail(JwtUtils.getCurrentEmail()); // CYC: 1, LOC: 3, COG: 0
             Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-            authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+            authService.validateManagerAccess(project, user.getEmail()); // CYC: 2, LOC: 6, COG: 1
             authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
 
             Stage stage = stageDb.findByStageId(stageId);

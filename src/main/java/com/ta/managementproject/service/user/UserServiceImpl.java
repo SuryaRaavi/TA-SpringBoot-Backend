@@ -61,12 +61,12 @@ public class UserServiceImpl implements UserService{
 
     @Override // Total CYC: 8, LOC: 57, COG: 7
     public ResponseEntity<?> addNewUser(RegisterRequestDTO requestDTO) throws Exception { // CYC: 6, LOC: 41, COG: 7
-        String username = requestDTO.getUsername();
+        String email = requestDTO.getEmail();
         String fullName = requestDTO.getFullName();
         String password = requestDTO.getPassword();
 
-        if (userDb.findByUsername(username) != null){
-            throw new ConflictException("Username already exist!");
+        if (userDb.findByEmail(email) != null){
+            throw new ConflictException("Email already exist!");
         }
 
         if (requestDTO.getRole() != 2 && requestDTO.getRole() != 1){
@@ -79,7 +79,7 @@ public class UserServiceImpl implements UserService{
         if (requestDTO.getRole() == 1){
             ProjectManager projectManager = ProjectManager.builder()
                     .role(roleDb.findByName("PROJECT_MANAGER"))
-                    .username(username)
+                    .email(email)
                     .password(aesUtil.encrypt(password)) // CYC: 1, LOC: 7, COG: 0
                     .fullName(fullName)
                     .createdAt(Instant.now())
@@ -89,7 +89,7 @@ public class UserServiceImpl implements UserService{
         }else {
             ProjectMember projectMember = ProjectMember.builder()
                     .role(roleDb.findByName("PROJECT_MEMBER"))
-                    .username(username)
+                    .email(email)
                     .password(aesUtil.encrypt(password))
                     .fullName(fullName)
                     .createdAt(Instant.now())
@@ -107,13 +107,13 @@ public class UserServiceImpl implements UserService{
 
         return utilService.buildResponse( // CYC: 1, LOC: 9, COG: 0
                 HttpStatus.CREATED,
-                String.format("Username %s berhasil didaftarkan", requestDTO.getUsername()),
-                new CrudResponseDTO("SUCCESS", String.format("Username %s berhasil didaftarkan", requestDTO.getUsername())));
+                String.format("Email %s berhasil didaftarkan", requestDTO.getEmail()),
+                new CrudResponseDTO("SUCCESS", String.format("Email %s berhasil didaftarkan", requestDTO.getEmail())));
     }
 
     @Override // CYC: 1, LOC: 5, COG: 0
-    public Role getUserRoleByUsername(String username) {
-        String role = userDb.getRoleByUsername(username);
+    public Role getUserRoleByEmail(String email) {
+        String role = userDb.getRoleByEmail(email);
         return Role.valueOf(role);
     }
 }

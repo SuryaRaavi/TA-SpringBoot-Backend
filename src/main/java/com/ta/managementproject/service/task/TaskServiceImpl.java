@@ -83,7 +83,7 @@ public class TaskServiceImpl implements TaskService {
             Integer order,
             String keyword
     ) {
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
         Page<TaskResponseDTO> tasks = taskDbWithDsl.findAll( // CYC: 20, LOC: 117, COG: 16
                 stageId,
@@ -93,7 +93,7 @@ public class TaskServiceImpl implements TaskService {
                 priority,
                 order,
                 keyword,
-                username,
+                email,
                 pageable
         );
 
@@ -105,7 +105,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public ResponseEntity<?> addNewTask(String stageId, CreateUpdateTaskRequestDTO requestDTO) { // CYC: 1, LOC: 23, COG: 0
             Stage stage = authService.validateStage(stageId); // CYC: 2, LOC: 8, COG: 1
-            authService.validateManagerAccess(stage.getProject(), JwtUtils.getCurrentUsername());
+            authService.validateManagerAccess(stage.getProject(), JwtUtils.getCurrentEmail());
             // CYC: 2, LOC: 6, COG: 1
             // CYC: 1, LOC: 3, COG: 0
             authService.validateProjectCancellation(stage.getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -136,7 +136,7 @@ public class TaskServiceImpl implements TaskService {
     public ResponseEntity<?> updateTask(String taskId, CreateUpdateTaskRequestDTO requestDTO) { // CYC: 1, LOC: 13, COG: 0
         Task task = authService.validateTask(taskId);  // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 2, LOC: 6, COG: 1
         // CYC: 1, LOC: 3, COG: 0
         authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -158,7 +158,7 @@ public class TaskServiceImpl implements TaskService {
     public ResponseEntity<?> getDetailTask(String taskId) { // CYC: 1, LOC: 6, COG: 0
         Task task = authService.validateTask(taskId);  // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 1, LOC: 3, COG: 0
         // CYC: 3, LOC: 10, COG: 2
 
@@ -170,7 +170,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public ResponseEntity<?> deleteTaskById(String stageId, String taskId) { // CYC: 1, LOC: 14, COG: 0
             Task task = authService.validateTask(taskId); // CYC: 2, LOC: 8, COG: 1
-            authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+            authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentEmail());
             // CYC: 2, LOC: 6, COG: 1
             // CYC: 1, LOC: 3, COG: 0
             authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -195,7 +195,7 @@ public class TaskServiceImpl implements TaskService {
         Task task = authService.validateTask(requestDTO.getId()); // CYC: 2, LOC: 8, COG: 1
         int totalTask = task.getStage().getTaskList().size();
 
-        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 2, LOC: 6, COG: 1
         // CYC: 1, LOC: 3, COG: 0
         authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -223,7 +223,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public ResponseEntity<?> updateTaskStatus(String taskId, CreateUpdateTaskRequestDTO requestDTO) { // CYC: 2, LOC: 15, COG: 1
         Task task = authService.validateTask(taskId);  // CYC: 2, LOC: 8, COG: 1
-        authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 1, LOC: 3, COG: 0
         // CYC: 3, LOC: 10, COG: 2
         authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -247,7 +247,7 @@ public class TaskServiceImpl implements TaskService {
         return TaskDetailResponseDTO.builder()
                 .taskId(task.getTaskId())
                 .taskName(task.getTaskName())
-                .assigneeId(task.getProjectMember() != null ? task.getProjectMember().getUsername() : "Unassigned")
+                .assigneeId(task.getProjectMember() != null ? task.getProjectMember().getEmail() : "Unassigned")
                 .description(task.getDescription())
                 .dueDate(task.getDueDate())
                 .label(task.getLabel())

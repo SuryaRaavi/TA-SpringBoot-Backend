@@ -52,12 +52,12 @@ class AuthServiceTest {
         mockRole.setName("MANAGER");
 
         mockUser = new User();
-        mockUser.setUsername("john");
+        mockUser.setEmail("john@example.com");
         mockUser.setPassword("encryptedPassword");
         mockUser.setRole(mockRole);
 
         mockManager = new ProjectManager();
-        mockManager.setUsername("manager1");
+        mockManager.setEmail("manager1@example.com");
 
         mockProject = Project.builder()
                 .projectId("project-1")
@@ -72,10 +72,10 @@ class AuthServiceTest {
     @Test
     void doLogin_ShouldThrowNotFoundException_WhenUsernameNotFound() {
         LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("unknown");
+        request.setEmail("unknown@example.com");
         request.setPassword("pass");
 
-        when(userDb.findByUsername("unknown")).thenReturn(null);
+        when(userDb.findByEmail("unknown@example.com")).thenReturn(null);
 
         assertThrows(NotFoundException.class, () -> authService.doLogin(request));
     }
@@ -83,10 +83,10 @@ class AuthServiceTest {
     @Test
     void doLogin_ShouldThrowForbiddenException_WhenPasswordWrong() throws Exception {
         LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("john");
+        request.setEmail("john@example.com");
         request.setPassword("wrongPass");
 
-        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(userDb.findByEmail("john@example.com")).thenReturn(mockUser);
         when(aesUtil.encrypt("wrongPass")).thenReturn("wrongEncrypted");
 
         assertThrows(ForbiddenException.class, () -> authService.doLogin(request));
@@ -95,12 +95,12 @@ class AuthServiceTest {
     @Test
     void doLogin_ShouldReturnOk_WhenCredentialsValid() throws Exception {
         LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("john");
+        request.setEmail("john@example.com");
         request.setPassword("correctPass");
 
-        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(userDb.findByEmail("john@example.com")).thenReturn(mockUser);
         when(aesUtil.encrypt("correctPass")).thenReturn("encryptedPassword");
-        when(jwtUtils.generateJwtToken("john", "MANAGER")).thenReturn("jwt-token");
+        when(jwtUtils.generateJwtToken("john@example.com", "MANAGER")).thenReturn("jwt-token");
         when(jwtUtils.getExpirationFromToken("jwt-token")).thenReturn(new Date());
         when(utilService.buildResponse(eq(HttpStatus.OK), eq("Login Successful"), any()))
                 .thenReturn(ResponseEntity.ok().build());
@@ -113,43 +113,43 @@ class AuthServiceTest {
     @Test
     void doLogin_ShouldCallGenerateJwtToken_WhenCredentialsValid() throws Exception {
         LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("john");
+        request.setEmail("john@example.com");
         request.setPassword("correctPass");
 
-        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(userDb.findByEmail("john@example.com")).thenReturn(mockUser);
         when(aesUtil.encrypt("correctPass")).thenReturn("encryptedPassword");
-        when(jwtUtils.generateJwtToken("john", "MANAGER")).thenReturn("jwt-token");
+        when(jwtUtils.generateJwtToken("john@example.com", "MANAGER")).thenReturn("jwt-token");
         when(jwtUtils.getExpirationFromToken("jwt-token")).thenReturn(new Date());
         when(utilService.buildResponse(any(), any(), any())).thenReturn(ResponseEntity.ok().build());
 
         authService.doLogin(request);
 
-        verify(jwtUtils, times(1)).generateJwtToken("john", "MANAGER");
+        verify(jwtUtils, times(1)).generateJwtToken("john@example.com", "MANAGER");
     }
 
     @Test
     void doLogin_ShouldThrowNotFoundException_WithCorrectMessage() {
         LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("ghost");
+        request.setEmail("ghost@example.com");
         request.setPassword("pass");
 
-        when(userDb.findByUsername("ghost")).thenReturn(null);
+        when(userDb.findByEmail("ghost@example.com")).thenReturn(null);
 
         NotFoundException ex = assertThrows(NotFoundException.class, () -> authService.doLogin(request));
-        assertEquals("USERNAME_NOT_FOUND", ex.getMessage());
+        assertEquals("USER_NOT_FOUND", ex.getMessage());
     }
 
     @Test
     void doLogin_ShouldThrowForbiddenException_WithCorrectMessage() throws Exception {
         LoginRequestDTO request = new LoginRequestDTO();
-        request.setUsername("john");
+        request.setEmail("john@example.com");
         request.setPassword("wrongPass");
 
-        when(userDb.findByUsername("john")).thenReturn(mockUser);
+        when(userDb.findByEmail("john@example.com")).thenReturn(mockUser);
         when(aesUtil.encrypt("wrongPass")).thenReturn("wrongEncrypted");
 
         ForbiddenException ex = assertThrows(ForbiddenException.class, () -> authService.doLogin(request));
-        assertEquals("Username atau password yang dimasukkan salah!", ex.getMessage());
+        assertEquals("Email atau password yang dimasukkan salah!", ex.getMessage());
     }
 
     // ===================== validateProject =====================
@@ -176,7 +176,7 @@ class AuthServiceTest {
 
     @Test
     void validateManagerAccess_ShouldPass_WhenUsernameIsManager() {
-        assertDoesNotThrow(() -> authService.validateManagerAccess(mockProject, "manager1"));
+        assertDoesNotThrow(() -> authService.validateManagerAccess(mockProject, "manager1@example.com"));
     }
 
     @Test
@@ -191,13 +191,13 @@ class AuthServiceTest {
     @Test
     void validateManagerAndMemberAccess_ShouldPass_WhenUserIsManager() {
         assertDoesNotThrow(() ->
-                authService.validateManagerAndMemberAccess(mockProject, "manager1"));
+                authService.validateManagerAndMemberAccess(mockProject, "manager1@example.com"));
     }
 
     @Test
     void validateManagerAndMemberAccess_ShouldPass_WhenUserIsMember() {
         User member = new ProjectMember();
-        member.setUsername("member1");
+        member.setEmail("member1@example.com");
 
         MemberInProject mip = new MemberInProject();
         mip.setProjectMember((ProjectMember) member);
@@ -207,13 +207,13 @@ class AuthServiceTest {
                 .build();
 
         assertDoesNotThrow(() ->
-                authService.validateManagerAndMemberAccess(projectWithMember, "member1"));
+                authService.validateManagerAndMemberAccess(projectWithMember, "member1@example.com"));
     }
 
     @Test
     void validateManagerAndMemberAccess_ShouldThrowForbiddenException_WhenNotManagerNorMember() {
         ForbiddenException ex = assertThrows(ForbiddenException.class,
-                () -> authService.validateManagerAndMemberAccess(mockProject, "outsider"));
+                () -> authService.validateManagerAndMemberAccess(mockProject, "outsider@example.com"));
         assertEquals("Access Not Allowed!", ex.getMessage());
     }
 

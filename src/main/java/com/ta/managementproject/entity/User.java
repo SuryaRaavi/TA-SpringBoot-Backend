@@ -21,14 +21,11 @@ import java.time.Instant;
 @Table(name = "app_user")
 @SQLRestriction("is_deleted IS false")
 @Inheritance(strategy = InheritanceType.JOINED)
-@SQLDelete(sql = "UPDATE app_user SET is_deleted = true WHERE username = ?")
+@SQLDelete(sql = "UPDATE app_user SET is_deleted = true WHERE email = ?")
 @SuperBuilder
 public class User {
     @Id
-    @Column(name = "username")
-    private String username;
-
-    @Column(name = "email", unique = true)
+    @Column(name = "email")
     private String email;
 
     @Column(name = "password", nullable = false)

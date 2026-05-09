@@ -63,10 +63,10 @@ class SubTaskServiceTest {
     @BeforeEach
     void setUp() {
         jwtUtilsMock = mockStatic(JwtUtils.class);
-        jwtUtilsMock.when(JwtUtils::getCurrentUsername).thenReturn("manager1");
+        jwtUtilsMock.when(JwtUtils::getCurrentEmail).thenReturn("manager1@example.com");
 
         mockPm = new ProjectManager();
-        mockPm.setUsername("manager1");
+        mockPm.setEmail("manager1@example.com");
         mockPm.setFullName("Manager One");
 
         mockProject = Project.builder()
@@ -89,7 +89,7 @@ class SubTaskServiceTest {
                 .build();
 
         mockProjectMember = new ProjectMember();
-        mockProjectMember.setUsername("member1");
+        mockProjectMember.setEmail("member1@example.com");
 
         mockTask = Task.builder()
                 .taskId("task-1")
@@ -174,14 +174,14 @@ class SubTaskServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<SubTaskResponseDTO> page = new PageImpl<>(List.of());
 
-        when(subTaskDbWithDsl.findAll(any(), any(), any(), any(), any(), any(), eq("manager1"), any()))
+        when(subTaskDbWithDsl.findAll(any(), any(), any(), any(), any(), any(), eq("manager1@example.com"), any()))
                 .thenReturn(page);
         stubBuildResponse(HttpStatus.OK);
 
         subTaskService.getAllSubTask("task-1", null, null, null, null, null, pageable);
 
         verify(subTaskDbWithDsl).findAll(
-                any(), any(), any(), any(), any(), any(), eq("manager1"), any());
+                any(), any(), any(), any(), any(), any(), eq("manager1@example.com"), any());
     }
 
     // ===================== addNewSubTask =====================
@@ -377,7 +377,7 @@ class SubTaskServiceTest {
 
         subTaskService.updateSubTask("subtask-1", mockRequest);
 
-        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1"));
+        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     // ===================== getDetailSubTask =====================
@@ -411,7 +411,7 @@ class SubTaskServiceTest {
         subTaskService.getDetailSubTask("subtask-1");
 
         verify(authService, times(1))
-                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1"));
+                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     // ===================== deleteSubTaskById =====================
@@ -504,7 +504,7 @@ class SubTaskServiceTest {
 
         subTaskService.deleteSubTaskById("task-1", "subtask-1");
 
-        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1"));
+        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     // ===================== reorderSubTask =====================
@@ -787,7 +787,7 @@ class SubTaskServiceTest {
         subTaskService.updateSubTaskStatus("subtask-1", mockRequest);
 
         verify(authService, times(1))
-                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1"));
+                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     @Test

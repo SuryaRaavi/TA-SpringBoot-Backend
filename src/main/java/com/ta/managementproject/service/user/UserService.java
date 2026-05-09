@@ -7,5 +7,5 @@ import org.springframework.http.ResponseEntity;
 public interface UserService {
     ResponseEntity<?> addNewUser(RegisterRequestDTO requestDTO) throws Exception;
 
-    Role getUserRoleByUsername(String username);
+    Role getUserRoleByEmail(String email);
 }

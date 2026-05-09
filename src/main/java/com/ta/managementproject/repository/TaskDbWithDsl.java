@@ -84,15 +84,15 @@ public class TaskDbWithDsl {
             LocalDate updatedAt,
             Integer priority,
             Integer order,
-            String username,
+            String email,
             String keyword
     ){
         BooleanBuilder builder = new BooleanBuilder();
 
         builder.and(task.stage.stageId.eq(stageId));
         builder.and(
-                task.stage.project.projectManager.username.eq(username)
-                .or(task.stage.project.memberInProjectList.any().projectMember.username.eq(username))
+                task.stage.project.projectManager.email.eq(email)
+                .or(task.stage.project.memberInProjectList.any().projectMember.email.eq(email))
         );
 
         if (dueDate != null) {
@@ -138,12 +138,12 @@ public class TaskDbWithDsl {
             Integer priority,
             Integer order,
             String keyword,
-            String username,
+            String email,
             Pageable pageable
     ){
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // // CYC: 11, LOC: 32, COG: 9
         BooleanBuilder predicate = buildDynamicFilter
-                (stageId, dueDate, createdAt, updatedAt, priority, order, username, keyword); // // CYC: 7, LOC: 43, COG: 6
+                (stageId, dueDate, createdAt, updatedAt, priority, order, email, keyword); // // CYC: 7, LOC: 43, COG: 6
 
         List<TaskResponseDTO> results = queryFactory
                 .select(Projections.constructor(
@@ -153,7 +153,7 @@ public class TaskDbWithDsl {
                         task.priority,
                         task.dueDate,
                         task.status,
-                        task.projectMember.username,
+                        task.projectMember.email,
                         task.label,
                         task.createdAt,
                         task.updatedAt,

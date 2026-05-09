@@ -60,14 +60,14 @@ class ProjectServiceTest {
     @BeforeEach
     void setUp() {
         jwtUtilsMock = mockStatic(JwtUtils.class);
-        jwtUtilsMock.when(JwtUtils::getCurrentUsername).thenReturn("manager1");
+        jwtUtilsMock.when(JwtUtils::getCurrentEmail).thenReturn("manager1@example.com");
 
         mockPm = new ProjectManager();
-        mockPm.setUsername("manager1");
+        mockPm.setEmail("manager1@example.com");
         mockPm.setFullName("Manager One");
 
         mockUser = new User();
-        mockUser.setUsername("manager1");
+        mockUser.setEmail("manager1@example.com");
 
         mockProject = Project.builder()
                 .projectId("project-1")
@@ -172,7 +172,7 @@ class ProjectServiceTest {
 
     @Test
     void addNewProject_ShouldReturnCreated_WhenValidRequest() {
-        when(projectManagerDb.findByUsername("manager1")).thenReturn(mockPm);
+        when(projectManagerDb.findByEmail("manager1@example.com")).thenReturn(mockPm);
         when(projectDb.save(any())).thenReturn(mockProject);
         stubAssignToDto();
         stubBuildResponse(HttpStatus.CREATED);
@@ -195,7 +195,7 @@ class ProjectServiceTest {
 
     @Test
     void addNewProject_ShouldCallProjectDbSave_WhenValidRequest() {
-        when(projectManagerDb.findByUsername("manager1")).thenReturn(mockPm);
+        when(projectManagerDb.findByEmail("manager1@example.com")).thenReturn(mockPm);
         when(projectDb.save(any())).thenReturn(mockProject);
         stubAssignToDto();
         stubBuildResponse(HttpStatus.CREATED);
@@ -209,7 +209,7 @@ class ProjectServiceTest {
 
     @Test
     void updateProject_ShouldReturnOk_WhenValidRequest() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         when(projectDb.save(any())).thenReturn(mockProject);
@@ -225,7 +225,7 @@ class ProjectServiceTest {
     void updateProject_ShouldThrowConflictException_WhenProjectCancelled() {
         Project cancelledProject = mockProject.toBuilder().isCancelled(true).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(cancelledProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
 
@@ -238,7 +238,7 @@ class ProjectServiceTest {
         mockRequest.setStartDate(LocalDate.of(2024, 12, 31));
         mockRequest.setEndDate(LocalDate.of(2024, 1, 1));
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
 
@@ -248,7 +248,7 @@ class ProjectServiceTest {
 
     @Test
     void updateProject_ShouldCallValidateManagerAccess() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         when(projectDb.save(any())).thenReturn(mockProject);
@@ -264,7 +264,7 @@ class ProjectServiceTest {
 
     @Test
     void getProjectDetail_ShouldReturnOk_WhenValidAccess() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
         stubAssignToDto();
@@ -277,7 +277,7 @@ class ProjectServiceTest {
 
     @Test
     void getProjectDetail_ShouldThrowNotFoundException_WhenProjectNotFound() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-x"))
                 .thenThrow(new NotFoundException("PROJECT_NOT_FOUND"));
 
@@ -287,7 +287,7 @@ class ProjectServiceTest {
 
     @Test
     void getProjectDetail_ShouldCallValidateManagerAndMemberAccess() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
         stubAssignToDto();
@@ -302,7 +302,7 @@ class ProjectServiceTest {
 
     @Test
     void deleteProjectById_ShouldReturnOk_WhenValidRequest() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(projectDb).delete(any());
@@ -315,7 +315,7 @@ class ProjectServiceTest {
 
     @Test
     void deleteProjectById_ShouldCallSoftDeleteMethods() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(projectDb).delete(any());
@@ -331,7 +331,7 @@ class ProjectServiceTest {
 
     @Test
     void deleteProjectById_ShouldThrowNotFoundException_WhenProjectNotFound() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-x"))
                 .thenThrow(new NotFoundException("PROJECT_NOT_FOUND"));
 
@@ -391,9 +391,9 @@ class ProjectServiceTest {
                 .build();
 
         ProjectMember pmb = new ProjectMember();
-        pmb.setUsername("manager1");
+        pmb.setEmail("manager1@example.com");
 
-        when(projectMemberDb.findByUsername("manager1")).thenReturn(pmb);
+        when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(pmb);
         when(projectDb.findByJoinCode("validcode1234")).thenReturn(validCodeProject);
         doNothing().when(authService).validateProjectCancellation(any());
         when(memberInProjectDb.save(any())).thenReturn(new MemberInProject());
@@ -406,7 +406,7 @@ class ProjectServiceTest {
 
     @Test
     void joinProject_ShouldThrowNotFoundException_WhenJoinCodeNotFound() {
-        when(projectMemberDb.findByUsername("manager1")).thenReturn(new ProjectMember());
+        when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(new ProjectMember());
         when(projectDb.findByJoinCode("invalidcode")).thenReturn(null);
 
         assertThrows(NotFoundException.class, () ->
@@ -415,7 +415,7 @@ class ProjectServiceTest {
 
     @Test
     void joinProject_ShouldThrowUnprocessableContentException_WhenJoinCodeExpired() {
-        when(projectMemberDb.findByUsername("manager1")).thenReturn(new ProjectMember());
+        when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(new ProjectMember());
         when(projectDb.findByJoinCode("expiredcode")).thenReturn(mockProject);
         doNothing().when(authService).validateProjectCancellation(any());
 
@@ -431,9 +431,9 @@ class ProjectServiceTest {
                 .build();
 
         ProjectMember pmb = new ProjectMember();
-        pmb.setUsername("manager1");
+        pmb.setEmail("manager1@example.com");
 
-        when(projectMemberDb.findByUsername("manager1")).thenReturn(pmb);
+        when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(pmb);
         when(projectDb.findByJoinCode("validcode1234")).thenReturn(validCodeProject);
         doNothing().when(authService).validateProjectCancellation(any());
         when(memberInProjectDb.save(any())).thenReturn(new MemberInProject());
@@ -497,6 +497,6 @@ class ProjectServiceTest {
 
         projectService.cancelProject("project-1");
 
-        verify(authService, times(1)).validateManagerAccess(any(), eq("manager1"));
+        verify(authService, times(1)).validateManagerAccess(any(), eq("manager1@example.com"));
     }
 }

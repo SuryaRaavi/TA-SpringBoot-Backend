@@ -12,9 +12,9 @@ public interface AuthService {
 
     Project validateProject(String projectId);
 
-    void validateManagerAccess(Project project, String username);
+    void validateManagerAccess(Project project, String email);
 
-    void validateManagerAndMemberAccess(Project project, String username);
+    void validateManagerAndMemberAccess(Project project, String email);
 
     Stage validateStage(String stageId);
 

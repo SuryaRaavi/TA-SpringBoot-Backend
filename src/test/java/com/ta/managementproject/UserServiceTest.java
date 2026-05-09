@@ -49,7 +49,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         mockRequest = new RegisterRequestDTO();
-        mockRequest.setUsername("newuser");
+        mockRequest.setEmail("newuser@example.com");
         mockRequest.setFullName("New User");
         mockRequest.setPassword("password123");
     }
@@ -66,7 +66,7 @@ class UserServiceTest {
     void addNewUser_ShouldReturnCreated_WhenRoleIsProjectManager() throws Exception {
         mockRequest.setRole(1);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MANAGER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectManagerDb.save(any())).thenReturn(new ProjectManager());
@@ -81,7 +81,7 @@ class UserServiceTest {
     void addNewUser_ShouldReturnCreated_WhenRoleIsProjectMember() throws Exception {
         mockRequest.setRole(2);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MEMBER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectMemberDb.save(any())).thenReturn(new ProjectMember());
@@ -97,19 +97,19 @@ class UserServiceTest {
         mockRequest.setRole(1);
 
         User existingUser = new ProjectManager();
-        when(userDb.findByUsername("newuser")).thenReturn(existingUser);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(existingUser);
 
         ConflictException ex = assertThrows(ConflictException.class, () ->
                 userService.addNewUser(mockRequest));
 
-        assertEquals("Username already exist!", ex.getMessage());
+        assertEquals("Email already exist!", ex.getMessage());
     }
 
     @Test
     void addNewUser_ShouldThrowBadRequestException_WhenRoleIsInvalid() {
         mockRequest.setRole(99);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
 
         BadRequestException ex = assertThrows(BadRequestException.class, () ->
                 userService.addNewUser(mockRequest));
@@ -121,7 +121,7 @@ class UserServiceTest {
     void addNewUser_ShouldThrowBadRequestException_WhenRoleIsZero() {
         mockRequest.setRole(0);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
 
         assertThrows(BadRequestException.class, () ->
                 userService.addNewUser(mockRequest));
@@ -131,7 +131,7 @@ class UserServiceTest {
     void addNewUser_ShouldCallProjectManagerDbSave_WhenRoleIsProjectManager() throws Exception {
         mockRequest.setRole(1);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MANAGER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectManagerDb.save(any())).thenReturn(new ProjectManager());
@@ -147,7 +147,7 @@ class UserServiceTest {
     void addNewUser_ShouldCallProjectMemberDbSave_WhenRoleIsProjectMember() throws Exception {
         mockRequest.setRole(2);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MEMBER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectMemberDb.save(any())).thenReturn(new ProjectMember());
@@ -163,7 +163,7 @@ class UserServiceTest {
     void addNewUser_ShouldEncryptPassword_WhenSavingProjectManager() throws Exception {
         mockRequest.setRole(1);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MANAGER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectManagerDb.save(any())).thenReturn(new ProjectManager());
@@ -179,7 +179,7 @@ class UserServiceTest {
     void addNewUser_ShouldEncryptPassword_WhenSavingProjectMember() throws Exception {
         mockRequest.setRole(2);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MEMBER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectMemberDb.save(any())).thenReturn(new ProjectMember());
@@ -195,7 +195,7 @@ class UserServiceTest {
     void addNewUser_ShouldSetCorrectUsername_WhenSavingProjectManager() throws Exception {
         mockRequest.setRole(1);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MANAGER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectManagerDb.save(any())).thenReturn(new ProjectManager());
@@ -204,14 +204,14 @@ class UserServiceTest {
         userService.addNewUser(mockRequest);
 
         verify(projectManagerDb).save(argThat(pm ->
-                "newuser".equals(pm.getUsername()) && "New User".equals(pm.getFullName())));
+                "newuser@example.com".equals(pm.getEmail()) && "New User".equals(pm.getFullName())));
     }
 
     @Test
     void addNewUser_ShouldSetCorrectUsername_WhenSavingProjectMember() throws Exception {
         mockRequest.setRole(2);
 
-        when(userDb.findByUsername("newuser")).thenReturn(null);
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(null);
         when(roleDb.findByName("PROJECT_MEMBER")).thenReturn(new com.ta.managementproject.entity.Role());
         when(aesUtil.encrypt("password123")).thenReturn("encryptedpassword");
         when(projectMemberDb.save(any())).thenReturn(new ProjectMember());
@@ -220,14 +220,14 @@ class UserServiceTest {
         userService.addNewUser(mockRequest);
 
         verify(projectMemberDb).save(argThat(pm ->
-                "newuser".equals(pm.getUsername()) && "New User".equals(pm.getFullName())));
+                "newuser@example.com".equals(pm.getEmail()) && "New User".equals(pm.getFullName())));
     }
 
     @Test
     void addNewUser_ShouldNotCheckRoleDb_WhenUsernameAlreadyExists() throws Exception {
         mockRequest.setRole(1);
 
-        when(userDb.findByUsername("newuser")).thenReturn(new ProjectManager());
+        when(userDb.findByEmail("newuser@example.com")).thenReturn(new ProjectManager());
 
         assertThrows(ConflictException.class, () -> userService.addNewUser(mockRequest));
 
@@ -238,36 +238,36 @@ class UserServiceTest {
 
     @Test
     void getUserRoleByUsername_ShouldReturnProjectManagerRole_WhenUserIsProjectManager() {
-        when(userDb.getRoleByUsername("manager1")).thenReturn("PROJECT_MANAGER");
+        when(userDb.getRoleByEmail("manager1@example.com")).thenReturn("PROJECT_MANAGER");
 
-        Role result = userService.getUserRoleByUsername("manager1");
+        Role result = userService.getUserRoleByEmail("manager1@example.com");
 
         assertEquals(Role.PROJECT_MANAGER, result);
     }
 
     @Test
     void getUserRoleByUsername_ShouldReturnProjectMemberRole_WhenUserIsProjectMember() {
-        when(userDb.getRoleByUsername("member1")).thenReturn("PROJECT_MEMBER");
+        when(userDb.getRoleByEmail("member1@example.com")).thenReturn("PROJECT_MEMBER");
 
-        Role result = userService.getUserRoleByUsername("member1");
+        Role result = userService.getUserRoleByEmail("member1@example.com");
 
         assertEquals(Role.PROJECT_MEMBER, result);
     }
 
     @Test
     void getUserRoleByUsername_ShouldCallUserDbGetRoleByUsername() {
-        when(userDb.getRoleByUsername("manager1")).thenReturn("PROJECT_MANAGER");
+        when(userDb.getRoleByEmail("manager1@example.com")).thenReturn("PROJECT_MANAGER");
 
-        userService.getUserRoleByUsername("manager1");
+        userService.getUserRoleByEmail("manager1@example.com");
 
-        verify(userDb, times(1)).getRoleByUsername("manager1");
+        verify(userDb, times(1)).getRoleByEmail("manager1@example.com");
     }
 
     @Test
     void getUserRoleByUsername_ShouldThrowIllegalArgumentException_WhenRoleIsInvalid() {
-        when(userDb.getRoleByUsername("unknown")).thenReturn("INVALID_ROLE");
+        when(userDb.getRoleByEmail("unknown@example.com")).thenReturn("INVALID_ROLE");
 
         assertThrows(IllegalArgumentException.class, () ->
-                userService.getUserRoleByUsername("unknown"));
+                userService.getUserRoleByEmail("unknown@example.com"));
     }
 }

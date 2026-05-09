@@ -71,14 +71,14 @@ public class StageDbWithDsl {
        String projectId,
        LocalDate createdAt,
        LocalDate updatedAt,
-       String username,
+       String email,
        String keyword
     ){
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(stage.project.projectId.eq(projectId));
         builder.and(
-                stage.project.projectManager.username.eq(username)
-                .or(stage.project.memberInProjectList.any().projectMember.username.eq(username))
+                stage.project.projectManager.email.eq(email)
+                .or(stage.project.memberInProjectList.any().projectMember.email.eq(email))
         );
 
         if (createdAt != null){
@@ -102,10 +102,10 @@ public class StageDbWithDsl {
     }
 
     // Total CYC: 15, LOC: 81, COG: 13
-    public Page<StageResponseDTO> findAll(String projectId, LocalDate createdAt, LocalDate updatedAt, String keyword, String username, Pageable pageable) {
+    public Page<StageResponseDTO> findAll(String projectId, LocalDate createdAt, LocalDate updatedAt, String keyword, String email, Pageable pageable) {
     // CYC: 2, LOC: 26, COG: 1
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 9, LOC: 26, COG: 9
-        BooleanBuilder predicate = buildDynamicFilter(projectId, createdAt, updatedAt, username, keyword); // CYC: 4, LOC: 29, COG: 3
+        BooleanBuilder predicate = buildDynamicFilter(projectId, createdAt, updatedAt, email, keyword); // CYC: 4, LOC: 29, COG: 3
 
         List<StageResponseDTO> results = queryFactory
                 .select(Projections.constructor(

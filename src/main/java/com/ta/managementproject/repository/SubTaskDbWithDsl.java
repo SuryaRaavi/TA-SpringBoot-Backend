@@ -80,15 +80,15 @@ public class SubTaskDbWithDsl {
             LocalDate createdAt,
             LocalDate updatedAt,
             Integer order,
-            String username,
+            String email,
             String keyword
     ){
         BooleanBuilder builder = new BooleanBuilder();
 
         builder.and(subTask.task.taskId.eq(taskId));
         builder.and(
-                subTask.task.stage.project.projectManager.username.eq(username)
-                .or(subTask.task.stage.project.memberInProjectList.any().projectMember.username.eq(username))
+                subTask.task.stage.project.projectManager.email.eq(email)
+                .or(subTask.task.stage.project.memberInProjectList.any().projectMember.email.eq(email))
         );
 
         if (dueDate != null) {
@@ -129,12 +129,12 @@ public class SubTaskDbWithDsl {
             LocalDate updatedAt,
             Integer order,
             String keyword,
-            String username,
+            String email,
             Pageable pageable
     ){
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29, COG: 9
         BooleanBuilder predicate = buildDynamicFilter
-                (taskId, dueDate, createdAt, updatedAt, order, username, keyword); // CYC: 6, LOC: 39, COG: 5
+                (taskId, dueDate, createdAt, updatedAt, order, email, keyword); // CYC: 6, LOC: 39, COG: 5
 
         List<SubTaskResponseDTO> results = queryFactory
                 .select(Projections.constructor(
@@ -144,7 +144,7 @@ public class SubTaskDbWithDsl {
                         subTask.dueDate,
                         subTask.status,
                         subTask.label,
-                        subTask.projectMember.username,
+                        subTask.projectMember.email,
                         subTask.createdAt,
                         subTask.updatedAt,
                         subTask.order,

@@ -80,7 +80,7 @@ public class ProjectDbWithDsl {
     }
 
     protected BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 37, COG: 5
-            String username,
+            String email,
             LocalDate startDate,
             LocalDate endDate,
             LocalDate createdAt,
@@ -89,8 +89,8 @@ public class ProjectDbWithDsl {
     ){
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(
-                project.projectManager.username.eq(username)
-                .or(project.memberInProjectList.any().projectMember.username.eq(username))
+                project.projectManager.email.eq(email)
+                .or(project.memberInProjectList.any().projectMember.email.eq(email))
         );
 
         if (startDate != null) {
@@ -125,7 +125,7 @@ public class ProjectDbWithDsl {
 
     // Total CYC: 18, LOC: 104, COG: 15
     public Page<ProjectResponseDTO> findAll( // CYC: 2, LOC: 38, COG: 1
-            String username,
+            String email,
             LocalDate startDate,
             LocalDate endDate,
             LocalDate createdAt,
@@ -134,7 +134,7 @@ public class ProjectDbWithDsl {
             Pageable pageable
     ){
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29, COG: 9
-        BooleanBuilder predicate = buildDynamicFilter(username, startDate, endDate, createdAt, updatedAt, keyword); // CYC: 6, LOC: 37, COG: 5
+        BooleanBuilder predicate = buildDynamicFilter(email, startDate, endDate, createdAt, updatedAt, keyword); // CYC: 6, LOC: 37, COG: 5
 
         List<ProjectResponseDTO> results = queryFactory
                 .select(Projections.constructor(

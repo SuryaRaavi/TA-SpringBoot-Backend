@@ -1,17 +1,16 @@
 package com.ta.managementproject.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import lombok.*;
 
-import java.time.Instant;
 import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class CreateUpdateProjectRequestDTO {
+    @NotBlank(message = "Project name cannot be blank")
     private String projectName;
     private String description;
 

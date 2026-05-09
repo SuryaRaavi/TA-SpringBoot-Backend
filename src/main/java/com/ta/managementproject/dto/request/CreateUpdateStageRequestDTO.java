@@ -1,14 +1,14 @@
 package com.ta.managementproject.dto.request;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import lombok.*;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 public class CreateUpdateStageRequestDTO {
+    @NotBlank(message = "Stage name cannot be blank")
     private String stageName;
     private String description;
 

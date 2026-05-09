@@ -2,6 +2,7 @@ package com.ta.managementproject.restcontroller;
 
 import java.time.LocalDate;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -10,8 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
-import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.dto.request.*;
 import com.ta.managementproject.service.task.SubTaskService;
 
 @RestController
@@ -61,7 +61,7 @@ public class SubTaskRestController {
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
+            @Valid @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
         return subTaskService.addNewSubTask(taskId, requestDTO); // CYC: 19, LOC: 134, COG: 10
     }
@@ -73,7 +73,7 @@ public class SubTaskRestController {
             @PathVariable String stageId,
             @PathVariable String taskId,
             @PathVariable String subTaskId,
-            @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
+            @Valid @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
         return subTaskService.updateSubTask(subTaskId, requestDTO); // CYC: 16, LOC: 61, COG: 9
     }
@@ -95,7 +95,7 @@ public class SubTaskRestController {
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @RequestBody ReorderRequestDTO requestDTO
+            @Valid @RequestBody ReorderRequestDTO requestDTO
     ){
         return subTaskService.reorderSubTask(taskId, requestDTO); // CYC: 15, LOC: 77, COG: 8
     }
@@ -118,7 +118,7 @@ public class SubTaskRestController {
             @PathVariable String stageId,
             @PathVariable String taskId,
             @PathVariable String subTaskId,
-            @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
+            @Valid @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
     ){
         return subTaskService.updateSubTaskStatus(subTaskId, requestDTO); // CYC: 20, LOC: 127, COG: 12
     }

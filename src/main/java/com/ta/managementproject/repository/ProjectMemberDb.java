@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProjectMemberDb extends JpaRepository<ProjectMember, String> {
-    ProjectMember findByUsername(String username);
+    ProjectMember findByEmail(String email);
 }

@@ -8,8 +8,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface UserDb extends JpaRepository<User, String> {
-    User findByUsername(String username);
+    User findByEmail(String email);
 
-    @Query("SELECT u.role.name FROM User u WHERE u.username = :username")
-    String getRoleByUsername(@Param("username") String username);
+    @Query("SELECT u.role.name FROM User u WHERE u.email = :email")
+    String getRoleByEmail(@Param("email") String email);
 }

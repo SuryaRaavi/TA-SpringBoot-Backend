@@ -11,7 +11,7 @@ import java.util.Date;
 @NoArgsConstructor
 @Data
 public class LoginResponseDTO {
-    private String username;
+    private String email;
     private RoleResponseDTO role;
     private String token;
     private Date expirationDate;

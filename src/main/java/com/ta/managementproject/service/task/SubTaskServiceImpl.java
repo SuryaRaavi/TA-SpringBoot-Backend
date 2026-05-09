@@ -72,7 +72,7 @@ public class SubTaskServiceImpl implements SubTaskService{
             String keyword,
             Pageable pageable
     ) {
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
         Page<SubTaskResponseDTO> subTasks = subTaskDbWithDsl.findAll( // CYC: 18, LOC: 110, COG: 15
                 taskId,
@@ -81,7 +81,7 @@ public class SubTaskServiceImpl implements SubTaskService{
                 updatedAt,
                 order,
                 keyword,
-                username,
+                email,
                 pageable
         );
 
@@ -93,7 +93,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     @Transactional
     public ResponseEntity<?> addNewSubTask(String taskId, CreateUpdateSubTaskRequestDTO requestDTO) { // CYC: 1, LOC: 24, COG: 0
         Task task = authService.validateTask(taskId); // CYC: 2, LOC: 8, COG: 1
-        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAccess(task.getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 2, LOC: 6, COG: 1
         // CYC: 1, LOC: 3, COG: 0
         authService.validateProjectCancellation(task.getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -126,7 +126,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     public ResponseEntity<?> updateSubTask(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) { // CYC: 6, LOC: 13, COG: 5
         SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 2, LOC: 6, COG: 1
         // CYC: 1, LOC: 3, COG: 0
         authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -147,7 +147,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     @Override // Total CYC: 10, LOC: 52, COG: 4
     public ResponseEntity<?> getDetailSubTask(String subTaskId) { // CYC: 1, LOC: 6, COG: 0
         SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8, COG: 1
-        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 1, LOC: 3, COG: 0
         // CYC: 3, LOC: 10, COG: 2
 
@@ -161,7 +161,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     @Transactional
     public ResponseEntity<?> deleteSubTaskById(String taskId, String subTaskId) { // CYC: 1, LOC: 14, COG: 0
         SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8, COG: 1
-        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 2, LOC: 6, COG: 1
         // CYC: 1, LOC: 3, COG: 0
         authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -185,7 +185,7 @@ public class SubTaskServiceImpl implements SubTaskService{
         SubTask subTask = authService.validateSubTask(requestDTO.getId()); // CYC: 2, LOC: 8, COG: 1
 
         int totalSubTask = subTask.getTask().getSubTaskList().size();
-        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 2, LOC: 6, COG: 1
         // CYC: 1, LOC: 3, COG: 0
         authService.validateProjectCancellation(subTask.getTask().getStage().getProject()); // CYC: 2, LOC: 6, COG: 1
@@ -214,7 +214,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     @Transactional
     public ResponseEntity<?> updateSubTaskStatus(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) { // CYC: 1, LOC: 13, COG: 0
         SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8, COG: 1
-        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentUsername());
+        authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 1, LOC: 3, COG: 0
         // CYC: 3, LOC: 10, COG: 2
 
@@ -240,7 +240,7 @@ public class SubTaskServiceImpl implements SubTaskService{
                 .dueDate(subTask.getDueDate())
                 .status(subTask.getStatus())
                 .label(subTask.getLabel())
-                .assigneeId(subTask.getProjectMember() != null ? subTask.getProjectMember().getUsername() : "Unassigned" )
+                .assigneeId(subTask.getProjectMember() != null ? subTask.getProjectMember().getEmail() : "Unassigned" )
                 .createdAt(subTask.getCreatedAt())
                 .updatedAt(subTask.getUpdatedAt())
                 .order(subTask.getOrder())

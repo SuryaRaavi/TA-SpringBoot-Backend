@@ -67,7 +67,7 @@ public class ProjectServiceImpl implements ProjectService {
     public ResponseEntity<?> getAllProject( // CYC: 4, LOC: 13, COG: 2
             Pageable pageable, LocalDate startDate, LocalDate endDate, LocalDate createdAt, LocalDate updatedAt, String keyword
     ) {
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
         Page<ProjectResponseDTO> projectList;
 
@@ -75,7 +75,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
         }
 
-        projectList = projectDbWithDsl.findAll(username, startDate, endDate, createdAt, updatedAt, keyword, pageable); // CYC: 18, LOC: 104, COG: 15
+        projectList = projectDbWithDsl.findAll(email, startDate, endDate, createdAt, updatedAt, keyword, pageable); // CYC: 18, LOC: 104, COG: 15
 
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", projectList); // CYC: 1, LOC: 9, COG: 0
     }
@@ -86,7 +86,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new BadRequestException("Tanggal mulai tidak boleh lebih dari tanggal selesai!");
         }
 
-        ProjectManager pm = projectManagerDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+        ProjectManager pm = projectManagerDb.findByEmail(JwtUtils.getCurrentEmail()); // CYC: 1, LOC: 3, COG: 0
 
         Project newProyek = Project
                         .builder()
@@ -106,10 +106,10 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override // Total CYC: 14, LOC: 67, COG: 11
     public ResponseEntity<?> updateProject(String projectId, CreateUpdateProjectRequestDTO requestDTO) { // CYC: 7, LOC: 21, COG: 6
-            User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+            User user = userDb.findByEmail(JwtUtils.getCurrentEmail()); // CYC: 1, LOC: 3, COG: 0
             Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-            authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+            authService.validateManagerAccess(project, user.getEmail()); // CYC: 2, LOC: 6, COG: 1
             if (project.isCancelled()){
                 throw new ConflictException("Update project is not allowed, project is already cancelled!");
             }
@@ -134,11 +134,11 @@ public class ProjectServiceImpl implements ProjectService {
     // Total CYC: 9, LOC: 57, COG: 3
     @Override
     public ResponseEntity<?> getProjectDetail(String projectId) { // CYC: 1, LOC: 7, COG: 0
-        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+        User user = userDb.findByEmail(JwtUtils.getCurrentEmail()); // CYC: 1, LOC: 3, COG: 0
 
         Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAndMemberAccess(project, user.getUsername()); // CYC: 3, LOC: 10, COG: 2
+        authService.validateManagerAndMemberAccess(project, user.getEmail()); // CYC: 3, LOC: 10, COG: 2
 
         // CYC: 1, LOC: 9, COG: 0
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(project)); // CYC: 1, LOC: 20, COG: 0
@@ -147,11 +147,11 @@ public class ProjectServiceImpl implements ProjectService {
     @Override // Total CYC: 8, LOC: 38, COG: 2
     @Transactional
     public ResponseEntity<?> deleteProjectById(String projectId) { // CYC: 1, LOC: 12, COG: 0
-        User user = userDb.findByUsername(JwtUtils.getCurrentUsername()); // CYC: 1, LOC: 3, COG: 0
+        User user = userDb.findByEmail(JwtUtils.getCurrentEmail()); // CYC: 1, LOC: 3, COG: 0
 
         Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(project, user.getUsername()); // CYC: 2, LOC: 6, COG: 1
+        authService.validateManagerAccess(project, user.getEmail()); // CYC: 2, LOC: 6, COG: 1
 
         projectDb.softDeleteSubTaskByProjectId(projectId);
         projectDb.softDeleteTaskByProjectId(projectId);
@@ -165,11 +165,11 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override // Total CYC: 13, LOC: 63, COG: 6
     public ResponseEntity<?> generateJoinCode(String projectId) { // CYC: 2, LOC: 22, COG: 1
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
         Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6, COG: 1
+        authService.validateManagerAccess(project, email); // CYC: 2, LOC: 6, COG: 1
         authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
 
         if (
@@ -195,9 +195,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override // Total CYC: 10, LOC: 48, COG: 5
     public ResponseEntity<?> joinProject(String joinCode) { // CYC: 3, LOC: 21, COG: 2
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
-        ProjectMember pmb = projectMemberDb.findByUsername(username);
+        ProjectMember pmb = projectMemberDb.findByEmail(email);
         Project project = projectDb.findByJoinCode(joinCode);
 
         if (project == null){
@@ -227,8 +227,8 @@ public class ProjectServiceImpl implements ProjectService {
     public ResponseEntity<?> cancelProject(String projectId){ // CYC: 2, LOC: 8, COG: 0
         Project project = authService.validateProject(projectId); // CYC: 2, LOC: 8, COG: 1
 
-        String username = JwtUtils.getCurrentUsername(); // CYC: 1, LOC: 3, COG: 0
-        authService.validateManagerAccess(project, username); // CYC: 2, LOC: 6, COG: 1
+        String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
+        authService.validateManagerAccess(project, email); // CYC: 2, LOC: 6, COG: 1
 
         Project cancelledProject = projectDb.save(project.toBuilder().isCancelled(true).build());
 

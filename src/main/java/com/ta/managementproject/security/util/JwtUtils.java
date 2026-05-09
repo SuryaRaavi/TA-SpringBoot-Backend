@@ -27,9 +27,9 @@ public class JwtUtils {
     @Value("${k3.app.jwtExpirationMs}")
     private long jwtExpirationMs;
 //    private long jwtExpirationMs = 86400000;
-    public String generateJwtToken(String username, String role) { // CYC: 1, LOC: 9, COG: 0
+    public String generateJwtToken(String email, String role) { // CYC: 1, LOC: 9, COG: 0
         return Jwts.builder()
-                .subject(username)
+                .subject(email)
                 .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
@@ -37,23 +37,8 @@ public class JwtUtils {
                 .compact();
     }
 
-    public static String getCurrentUsername(){ // CYC: 1, LOC: 3, COG: 0
+    public static String getCurrentEmail(){ // CYC: 1, LOC: 3, COG: 0
         return SecurityContextHolder.getContext().getAuthentication().getName();
-    }
-
-    // CYC: 3, LOC: 10
-    public String getUserNameFromRequest(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-
-        String token = "";
-
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
-            token = headerAuth.substring(7);
-        }
-
-        JwtParser jwtParser = Jwts.parser().verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes())).build();
-        Claims claims = jwtParser.parse(token).accept(Jws.CLAIMS).getPayload();
-        return claims.getSubject();
     }
 
     public boolean validateJwtToken(String authToken) {
@@ -61,7 +46,7 @@ public class JwtUtils {
         return true;
     }
 
-    public String getUserNameFromJwtToken(String token) {
+    public String getEmailFromJwtToken(String token) {
         JwtParser jwtParser = Jwts.parser().verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes())).build();
         Claims claims = jwtParser.parse(token).accept(Jws.CLAIMS).getPayload();
         return claims.getSubject();

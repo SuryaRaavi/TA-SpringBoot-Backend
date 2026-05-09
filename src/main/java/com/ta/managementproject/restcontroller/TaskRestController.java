@@ -2,6 +2,7 @@ package com.ta.managementproject.restcontroller;
 
 import java.time.LocalDate;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -10,8 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
-import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.dto.request.*;
 import com.ta.managementproject.service.task.TaskService;
 
 @RestController
@@ -66,7 +66,7 @@ public class TaskRestController{
     public ResponseEntity<?> addNewTask( // CYC: 1, LOC: 9, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
-            @RequestBody CreateUpdateTaskRequestDTO requestDTO
+            @Valid @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
         return taskService.addNewTask(stageId, requestDTO); // CYC: 15, LOC: 113, COG: 6
     }
@@ -77,7 +77,7 @@ public class TaskRestController{
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @RequestBody CreateUpdateTaskRequestDTO requestDTO
+            @Valid @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
         return taskService.updateTask(taskId, requestDTO); // CYC: 11, LOC: 67, COG: 4
     }
@@ -97,7 +97,7 @@ public class TaskRestController{
     public ResponseEntity<?> reorderTask( // CYC: 1, LOC: 9, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
-            @RequestBody ReorderRequestDTO requestDTO
+            @Valid @RequestBody ReorderRequestDTO requestDTO
     ){
         return taskService.reorderTask(stageId, requestDTO); // CYC: 15, LOC: 83, COG: 8
     }
@@ -118,7 +118,7 @@ public class TaskRestController{
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @RequestBody CreateUpdateTaskRequestDTO requestDTO
+            @Valid @RequestBody CreateUpdateTaskRequestDTO requestDTO
     ){
         return taskService.updateTaskStatus(taskId, requestDTO); // CYC: 17, LOC: 109, COG: 8
     }

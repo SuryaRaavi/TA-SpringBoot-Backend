@@ -46,7 +46,7 @@ class TaskDbWithDslTest {
                     LocalDate updatedAt,
                     Integer priority,
                     Integer order,
-                    String username,
+                    String email,
                     String keyword
             ) {
                 return new BooleanBuilder(); // return kosong, tidak traverse relasi

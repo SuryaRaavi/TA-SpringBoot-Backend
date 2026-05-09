@@ -23,5 +23,9 @@ public class ProjectMember extends User{
 
     @OneToMany(mappedBy = "projectMember", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
+    private List<SubTask> subTaskList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "projectMember", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<MemberInProject> memberInProjectList = new ArrayList<>();
 }

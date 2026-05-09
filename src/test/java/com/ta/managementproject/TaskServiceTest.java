@@ -66,10 +66,10 @@ class TaskServiceTest {
     @BeforeEach
     void setUp() {
         jwtUtilsMock = mockStatic(JwtUtils.class);
-        jwtUtilsMock.when(JwtUtils::getCurrentUsername).thenReturn("manager1");
+        jwtUtilsMock.when(JwtUtils::getCurrentEmail).thenReturn("manager1@example.com");
 
         mockPm = new ProjectManager();
-        mockPm.setUsername("manager1");
+        mockPm.setEmail("manager1@example.com");
         mockPm.setFullName("Manager One");
 
         mockProject = Project.builder()
@@ -93,7 +93,7 @@ class TaskServiceTest {
                 .build();
 
         mockProjectMember = new ProjectMember();
-        mockProjectMember.setUsername("member1");
+        mockProjectMember.setEmail("member1@example.com");
 
         mockTask = Task.builder()
                 .taskId("task-1")
@@ -170,14 +170,14 @@ class TaskServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<TaskResponseDTO> page = new PageImpl<>(List.of());
 
-        when(taskDbWithDsl.findAll(any(), any(), any(), any(), any(), any(), any(), eq("manager1"), any()))
+        when(taskDbWithDsl.findAll(any(), any(), any(), any(), any(), any(), any(), eq("manager1@example.com"), any()))
                 .thenReturn(page);
         stubBuildResponse(HttpStatus.OK);
 
         taskService.getAllTask(pageable, "stage-1", null, null, null, null, null, null);
 
         verify(taskDbWithDsl).findAll(
-                any(), any(), any(), any(), any(), any(), any(), eq("manager1"), any());
+                any(), any(), any(), any(), any(), any(), any(), eq("manager1@example.com"), any());
     }
 
     // ===================== addNewTask =====================
@@ -340,7 +340,7 @@ class TaskServiceTest {
 
         taskService.updateTask("task-1", mockRequest);
 
-        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1"));
+        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     // ===================== getDetailTask =====================
@@ -374,7 +374,7 @@ class TaskServiceTest {
         taskService.getDetailTask("task-1");
 
         verify(authService, times(1))
-                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1"));
+                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     // ===================== deleteTaskById =====================
@@ -743,6 +743,6 @@ class TaskServiceTest {
         taskService.updateTaskStatus("task-1", mockRequest);
 
         verify(authService, times(1))
-                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1"));
+                .validateManagerAndMemberAccess(eq(mockProject), eq("manager1@example.com"));
     }
 }

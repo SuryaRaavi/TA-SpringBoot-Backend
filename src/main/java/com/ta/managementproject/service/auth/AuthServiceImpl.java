@@ -54,25 +54,25 @@ public class AuthServiceImpl implements AuthService {
     public ResponseEntity<?> doLogin(LoginRequestDTO request) throws Exception { // CYC: 3, LOC: 20, COG: 2
         LoginResponseDTO loginResponseDTO = new LoginResponseDTO();
 
-        String username = request.getUsername();
+        String email = request.getEmail();
         String password = request.getPassword();
 
-        User selectedUser = userDb.findByUsername(username);
+        User selectedUser = userDb.findByEmail(email);
 
         if (selectedUser == null){
-            throw new NotFoundException("USERNAME_NOT_FOUND");
+            throw new NotFoundException("USER_NOT_FOUND");
         }
 
         String encryptedPass = aesUtil.encrypt(password); // CYC: 1, LOC: 7, COG: 0
 
         if (!encryptedPass.equals(selectedUser.getPassword())) {
-            throw new ForbiddenException("Username atau password yang dimasukkan salah!");
+            throw new ForbiddenException("Email atau password yang dimasukkan salah!");
         }
 
-        String jwtToken = jwtUtils.generateJwtToken(username, selectedUser.getRole().getName()); // CYC: 1, LOC: 9, COG: 0
+        String jwtToken = jwtUtils.generateJwtToken(email, selectedUser.getRole().getName()); // CYC: 1, LOC: 9, COG: 0
         loginResponseDTO.setRole(new RoleResponseDTO(selectedUser.getRole().getName()));
         loginResponseDTO.setToken(jwtToken);
-        loginResponseDTO.setUsername(username);
+        loginResponseDTO.setEmail(email);
         loginResponseDTO.setExpirationDate(jwtUtils.getExpirationFromToken(jwtToken)); // CYC: 1, LOC: 5, COG: 0
 
         return utilService.buildResponse(HttpStatus.OK, "Login Successful", loginResponseDTO); // CYC: 1, LOC: 9, COG: 0
@@ -90,19 +90,19 @@ public class AuthServiceImpl implements AuthService {
 
     // CYC: 2, LOC: 6, COG: 1
     @Override
-    public void validateManagerAccess(Project project, String username) {
-        if (!project.getProjectManager().getUsername().equals(username)) {
+    public void validateManagerAccess(Project project, String email) {
+        if (!project.getProjectManager().getEmail().equals(email)) {
             throw new ForbiddenException("FORBIDDEN");
         }
     }
 
     // CYC: 3, LOC: 10, COG: 2
     @Override
-    public void validateManagerAndMemberAccess(Project project, String username){
+    public void validateManagerAndMemberAccess(Project project, String email){
         if (
-                !project.getProjectManager().getUsername().equals(username) &&
+                !project.getProjectManager().getEmail().equals(email) &&
                         project.getMemberInProjectList().stream().noneMatch(
-                                p -> p.getProjectMember().getUsername().equals(username)
+                                p -> p.getProjectMember().getEmail().equals(email)
 
                         )){
             throw new ForbiddenException("Access Not Allowed!");

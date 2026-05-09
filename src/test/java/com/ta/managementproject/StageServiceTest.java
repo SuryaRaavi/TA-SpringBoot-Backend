@@ -60,14 +60,14 @@ class StageServiceTest {
     @BeforeEach
     void setUp() {
         jwtUtilsMock = mockStatic(JwtUtils.class);
-        jwtUtilsMock.when(JwtUtils::getCurrentUsername).thenReturn("manager1");
+        jwtUtilsMock.when(JwtUtils::getCurrentEmail).thenReturn("manager1@example.com");
 
         mockPm = new ProjectManager();
-        mockPm.setUsername("manager1");
+        mockPm.setEmail("manager1@example.com");
         mockPm.setFullName("Manager One");
 
         mockUser = new User();
-        mockUser.setUsername("manager1");
+        mockUser.setEmail("manager1@example.com");
 
         mockProject = Project.builder()
                 .projectId("project-1")
@@ -149,13 +149,13 @@ class StageServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<StageResponseDTO> page = new PageImpl<>(List.of());
 
-        when(stageDbWithDsl.findAll(any(), any(), any(), any(), eq("manager1"), any()))
+        when(stageDbWithDsl.findAll(any(), any(), any(), any(), eq("manager1@example.com"), any()))
                 .thenReturn(page);
         stubBuildResponse(HttpStatus.OK);
 
         stageService.getAllStage("project-1", pageable, null, null, null);
 
-        verify(stageDbWithDsl).findAll(any(), any(), any(), any(), eq("manager1"), any());
+        verify(stageDbWithDsl).findAll(any(), any(), any(), any(), eq("manager1@example.com"), any());
     }
 
     // ===================== getStage =====================
@@ -188,7 +188,7 @@ class StageServiceTest {
 
         stageService.getStage("stage-1");
 
-        verify(authService, times(1)).validateManagerAndMemberAccess(eq(mockProject), eq("manager1"));
+        verify(authService, times(1)).validateManagerAndMemberAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     // ===================== addNewStage =====================
@@ -262,7 +262,7 @@ class StageServiceTest {
 
     @Test
     void editStage_ShouldReturnOk_WhenValidRequest() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateStage("stage-1")).thenReturn(mockStage);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -278,7 +278,7 @@ class StageServiceTest {
     void editStage_ShouldKeepExistingStageName_WhenRequestStageNameIsNull() {
         mockRequest.setStageName(null);
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateStage("stage-1")).thenReturn(mockStage);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -295,7 +295,7 @@ class StageServiceTest {
     void editStage_ShouldKeepExistingDescription_WhenRequestDescriptionIsNull() {
         mockRequest.setDescription(null);
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateStage("stage-1")).thenReturn(mockStage);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -310,7 +310,7 @@ class StageServiceTest {
 
     @Test
     void editStage_ShouldThrowNotFoundException_WhenStageNotFound() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateStage("stage-x"))
                 .thenThrow(new NotFoundException("STAGE_NOT_FOUND"));
 
@@ -320,7 +320,7 @@ class StageServiceTest {
 
     @Test
     void editStage_ShouldCallValidateManagerAccess() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateStage("stage-1")).thenReturn(mockStage);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -329,7 +329,7 @@ class StageServiceTest {
 
         stageService.editStage("stage-1", mockRequest);
 
-        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1"));
+        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1@example.com"));
     }
 
     // ===================== reorderStage =====================
@@ -348,7 +348,7 @@ class StageServiceTest {
         );
         Project project = mockProject.toBuilder().stageList(new ArrayList<>(stageList)).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(project);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -375,7 +375,7 @@ class StageServiceTest {
         );
         Project project = mockProject.toBuilder().stageList(new ArrayList<>(stageList)).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(project);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -402,7 +402,7 @@ class StageServiceTest {
         );
         Project project = mockProject.toBuilder().stageList(new ArrayList<>(stageList)).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(project);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -426,7 +426,7 @@ class StageServiceTest {
         );
         Project project = mockProject.toBuilder().stageList(new ArrayList<>(stageList)).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(project);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -453,7 +453,7 @@ class StageServiceTest {
         );
         Project project = mockProject.toBuilder().stageList(new ArrayList<>(stageList)).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(project);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -480,7 +480,7 @@ class StageServiceTest {
         );
         Project project = mockProject.toBuilder().stageList(new ArrayList<>(stageList)).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(project);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -507,7 +507,7 @@ class StageServiceTest {
         );
         Project project = mockProject.toBuilder().stageList(new ArrayList<>(stageList)).build();
 
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(project);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -524,7 +524,7 @@ class StageServiceTest {
 
     @Test
     void deleteStageById_ShouldReturnOk_WhenValidRequest() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -540,7 +540,7 @@ class StageServiceTest {
 
     @Test
     void deleteStageById_ShouldCallSoftDeleteMethods() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -558,7 +558,7 @@ class StageServiceTest {
 
     @Test
     void deleteStageById_ShouldCallUpdateStageOrderAfterDelete() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -574,7 +574,7 @@ class StageServiceTest {
 
     @Test
     void deleteStageById_ShouldCallUpdateProjectSummary() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -590,7 +590,7 @@ class StageServiceTest {
 
     @Test
     void deleteStageById_ShouldThrowNotFoundException_WhenProjectNotFound() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-x"))
                 .thenThrow(new NotFoundException("PROJECT_NOT_FOUND"));
 
@@ -600,7 +600,7 @@ class StageServiceTest {
 
     @Test
     void deleteStageById_ShouldCallValidateManagerAccess() {
-        when(userDb.findByUsername("manager1")).thenReturn(mockUser);
+        when(userDb.findByEmail("manager1@example.com")).thenReturn(mockUser);
         when(authService.validateProject("project-1")).thenReturn(mockProject);
         doNothing().when(authService).validateManagerAccess(any(), anyString());
         doNothing().when(authService).validateProjectCancellation(any());
@@ -611,6 +611,6 @@ class StageServiceTest {
 
         stageService.deleteStageById("project-1", "stage-1");
 
-        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1"));
+        verify(authService, times(1)).validateManagerAccess(eq(mockProject), eq("manager1@example.com"));
     }
 }

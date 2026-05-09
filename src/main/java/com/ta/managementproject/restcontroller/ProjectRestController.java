@@ -2,6 +2,7 @@ package com.ta.managementproject.restcontroller;
 
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
 import com.ta.managementproject.service.project.ProjectService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -53,7 +54,7 @@ public class ProjectRestController {
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 6, LOC: 55, COG: 1
     @PostMapping("")
-    public ResponseEntity<?> addNewProject(@RequestBody CreateUpdateProjectRequestDTO requestDTO){ // CYC: 1, LOC: 5, COG: 0
+    public ResponseEntity<?> addNewProject(@Valid @RequestBody CreateUpdateProjectRequestDTO requestDTO){ // CYC: 1, LOC: 5, COG: 0
         return projectService.addNewProject(requestDTO); // CYC: 5, LOC: 50, COG: 1
     }
 
