@@ -2,6 +2,7 @@ package com.ta.managementproject;
 
 import com.ta.managementproject.dto.request.CreateUpdateTaskRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.dto.request.UpdateStatusRequestDTO;
 import com.ta.managementproject.dto.response.TaskResponseDTO;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.exception.ConflictException;
@@ -119,7 +120,7 @@ class TaskServiceTest {
         mockRequest.setDescription("Task desc");
         mockRequest.setPriority(1);
         mockRequest.setDueDate(LocalDate.of(2024, 6, 30));
-        mockRequest.setProjectMember(mockProjectMember);
+        mockRequest.setProjectMember(mockProjectMember.getEmail());
     }
 
     @AfterEach
@@ -650,7 +651,7 @@ class TaskServiceTest {
 
     @Test
     void updateTaskStatus_ShouldReturnOk_WhenValidRequest() {
-        mockRequest.setStatus("IN_PROGRESS");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("IN_PROGRESS");
 
         when(authService.validateTask("task-1")).thenReturn(mockTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -660,14 +661,14 @@ class TaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        ResponseEntity<?> result = taskService.updateTaskStatus("task-1", mockRequest);
+        ResponseEntity<?> result = taskService.updateTaskStatus("task-1", mockStatus);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void updateTaskStatus_ShouldUpdateStatus_WhenSubTaskListEmpty() {
-        mockRequest.setStatus("DONE");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("DONE");
 
         when(authService.validateTask("task-1")).thenReturn(mockTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -677,14 +678,14 @@ class TaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        taskService.updateTaskStatus("task-1", mockRequest);
+        taskService.updateTaskStatus("task-1", mockStatus);
 
         verify(taskDb).save(argThat(task -> "DONE".equals(task.getStatus())));
     }
 
     @Test
     void updateTaskStatus_ShouldThrowConflictException_WhenSubTaskListNotEmpty() {
-        mockRequest.setStatus("DONE");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("DONE");
 
         SubTask subTask = new SubTask();
         Task taskWithSubTasks = mockTask.toBuilder()
@@ -696,12 +697,12 @@ class TaskServiceTest {
         doNothing().when(authService).validateProjectCancellation(any());
 
         assertThrows(ConflictException.class, () ->
-                taskService.updateTaskStatus("task-1", mockRequest));
+                taskService.updateTaskStatus("task-1", mockStatus));
     }
 
     @Test
     void updateTaskStatus_ShouldCallUpdateStageSummaryAndProjectSummary() {
-        mockRequest.setStatus("IN_PROGRESS");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("IN_PROGRESS");
 
         when(authService.validateTask("task-1")).thenReturn(mockTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -711,7 +712,7 @@ class TaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        taskService.updateTaskStatus("task-1", mockRequest);
+        taskService.updateTaskStatus("task-1", mockStatus);
 
         verify(utilService, times(1)).updateStageSummary("stage-1");
         verify(utilService, times(1)).updateProjectSummary("project-1");
@@ -719,18 +720,18 @@ class TaskServiceTest {
 
     @Test
     void updateTaskStatus_ShouldThrowNotFoundException_WhenTaskNotFound() {
-        mockRequest.setStatus("DONE");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("DONE");
 
         when(authService.validateTask("task-x"))
                 .thenThrow(new NotFoundException("TASK_NOT_FOUND"));
 
         assertThrows(NotFoundException.class, () ->
-                taskService.updateTaskStatus("task-x", mockRequest));
+                taskService.updateTaskStatus("task-x", mockStatus));
     }
 
     @Test
     void updateTaskStatus_ShouldCallValidateManagerAndMemberAccess() {
-        mockRequest.setStatus("IN_PROGRESS");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("IN_PROGRESS");
 
         when(authService.validateTask("task-1")).thenReturn(mockTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -740,7 +741,7 @@ class TaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        taskService.updateTaskStatus("task-1", mockRequest);
+        taskService.updateTaskStatus("task-1", mockStatus);
 
         verify(authService, times(1))
                 .validateManagerAndMemberAccess(eq(mockProject), eq("manager1@example.com"));

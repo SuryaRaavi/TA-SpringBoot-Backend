@@ -2,6 +2,7 @@ package com.ta.managementproject.service.task;
 
 import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.dto.request.UpdateStatusRequestDTO;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
@@ -29,5 +30,5 @@ public interface SubTaskService {
 
     ResponseEntity<?> reorderSubTask(String taskId, ReorderRequestDTO requestDTO);
 
-    ResponseEntity<?> updateSubTaskStatus(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO);
+    ResponseEntity<?> updateSubTaskStatus(String subTaskId, UpdateStatusRequestDTO requestDTO);
 }

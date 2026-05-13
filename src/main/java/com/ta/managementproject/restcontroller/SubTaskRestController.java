@@ -15,7 +15,7 @@ import com.ta.managementproject.dto.request.*;
 import com.ta.managementproject.service.task.SubTaskService;
 
 @RestController
-@RequestMapping("/api/v1/projects/{projectId}/stages/{stageId}/tasks/{taskId}/subtasks")
+@RequestMapping("/api/v1/projects/{projectId}/stages/{stageId}/tasks/{taskId}/sub_tasks")
 public class SubTaskRestController {
     @Autowired
     private SubTaskService subTaskService;
@@ -26,7 +26,7 @@ public class SubTaskRestController {
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @PageableDefault(size = 10, page = 0) Pageable pageable,
+            @PageableDefault(size = 20, page = 0) Pageable pageable,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -112,13 +112,13 @@ public class SubTaskRestController {
     }
 
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 21, LOC: 138, COG: 12
-    @PatchMapping("/update-status")
+    @PatchMapping("/{subTaskId}/status")
     public ResponseEntity<?> updateSubTaskStatus( // CYC: 1, LOC: 11, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
             @PathVariable String subTaskId,
-            @Valid @RequestBody CreateUpdateSubTaskRequestDTO requestDTO
+            @Valid @RequestBody UpdateStatusRequestDTO requestDTO
     ){
         return subTaskService.updateSubTaskStatus(subTaskId, requestDTO); // CYC: 20, LOC: 127, COG: 12
     }

@@ -1,6 +1,7 @@
 package com.ta.managementproject.restcontroller;
 
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
+import com.ta.managementproject.dto.request.JoinProjectRequestDTO;
 import com.ta.managementproject.service.project.ProjectService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,7 @@ public class ProjectRestController {
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')")
     @GetMapping("")
     public ResponseEntity<?> getProjects( // CYC: 1, LOC: 20, COG: 0
-            @PageableDefault(size = 10, page = 0) Pageable pageable,
+            @PageableDefault(size = 20, page = 0) Pageable pageable,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate startDate,
@@ -77,14 +78,14 @@ public class ProjectRestController {
         return projectService.generateJoinCode(projectId); // CYC: 13, LOC: 63, COG: 6
     }
 
-    @PreAuthorize("hasRole('PROJECT_MEMBER')") // Total CYC: 11, LOC: 53, COG: 5
+    @PreAuthorize("hasRole('PROJECT_MEMBER')") // Total CYC: 12, LOC: 58, COG: 6
     @PostMapping("/join")
-    public ResponseEntity<?> joinProject(@RequestParam String joinCode){ // CYC: 1, LOC: 5, COG: 0
-        return projectService.joinProject(joinCode); // CYC: 10, LOC: 48, COG: 5
+    public ResponseEntity<?> joinProject(@RequestBody JoinProjectRequestDTO requestDTO){ // CYC: 1, LOC: 5, COG: 0
+        return projectService.joinProject(requestDTO); // CYC: 11, LOC: 53, COG: 6
     }
 
     @PreAuthorize("hasRole('PROJECT_MANAGER')") // Total CYC: 10, LOC: 59, COG: 2
-    @PostMapping("/{projectId}/cancel-project")
+    @PatchMapping("/{projectId}/cancel-project")
     public ResponseEntity<?> cancelProject(@PathVariable("projectId") String projectId){ // CYC: 1, LOC: 5, COG: 0
         return projectService.cancelProject(projectId); // CYC: 9, LOC: 54, COG: 2
     }

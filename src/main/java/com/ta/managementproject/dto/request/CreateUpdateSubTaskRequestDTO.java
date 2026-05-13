@@ -1,7 +1,6 @@
 package com.ta.managementproject.dto.request;
 
 
-import com.ta.managementproject.entity.ProjectMember;
 import com.ta.managementproject.entity.Task;
 
 import jakarta.validation.constraints.NotBlank;
@@ -22,6 +21,5 @@ public class CreateUpdateSubTaskRequestDTO {
     private String status;
     private String label;
     private Integer order;
-    private ProjectMember projectMember;
-    private Task task;
+    private String projectMember;
 }

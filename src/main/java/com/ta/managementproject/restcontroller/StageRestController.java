@@ -23,7 +23,7 @@ public class StageRestController {
     @GetMapping("")
     public ResponseEntity<?> getAllStage( // CYC: 1, LOC: 15, COG: 0
             @PathVariable String projectId,
-            @PageableDefault(size = 10, page = 0) Pageable pageable,
+            @PageableDefault(size = 20, page = 0) Pageable pageable,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate createdAt,

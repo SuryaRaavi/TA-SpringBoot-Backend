@@ -7,7 +7,7 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ta.managementproject.dto.response.SubTaskResponseDTO;
 import com.ta.managementproject.dto.response.TaskResponseDTO;
-import com.ta.managementproject.entity.QSubTask;
+import com.ta.managementproject.entity.*;
 import com.ta.managementproject.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +27,16 @@ import java.util.List;
 public class SubTaskDbWithDsl {
     private final JPAQueryFactory queryFactory;
     private final QSubTask subTask = QSubTask.subTask;
+    private final QTask qTask = new QTask("qTask");
+    private final QStage qStage = new QStage("qStage");
+    private final QProject qProject = new QProject("qProject");
+    private final QProjectManager qPM = new QProjectManager("qPM");
+    private final QMemberInProject qMIP = new QMemberInProject("qMIP");
+    private final QProjectMember qMember = new QProjectMember("qMember");
+
+    // ✅ Alias HARUS sama dengan alias di atas untuk JOINED inheritance
+    private final QUser qPMAsUser = new QUser("qPM");
+    private final QUser qMemberAsUser = new QUser("qMember");
 
     private static List<String> SORTING_COLUMNS = List.of
             ("subTaskName", "order", "createdAt", "updatedAt", "dueDate");
@@ -80,16 +90,11 @@ public class SubTaskDbWithDsl {
             LocalDate createdAt,
             LocalDate updatedAt,
             Integer order,
-            String email,
             String keyword
     ){
         BooleanBuilder builder = new BooleanBuilder();
 
         builder.and(subTask.task.taskId.eq(taskId));
-        builder.and(
-                subTask.task.stage.project.projectManager.email.eq(email)
-                .or(subTask.task.stage.project.memberInProjectList.any().projectMember.email.eq(email))
-        );
 
         if (dueDate != null) {
             Instant instant = dueDate.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -134,7 +139,11 @@ public class SubTaskDbWithDsl {
     ){
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29, COG: 9
         BooleanBuilder predicate = buildDynamicFilter
-                (taskId, dueDate, createdAt, updatedAt, order, email, keyword); // CYC: 6, LOC: 39, COG: 5
+                (taskId, dueDate, createdAt, updatedAt, order, keyword); // CYC: 6, LOC: 39, COG: 5
+
+        BooleanBuilder authFilter = new BooleanBuilder(
+                qPMAsUser.email.eq(email).or(qMemberAsUser.email.eq(email))
+        );
 
         List<SubTaskResponseDTO> results = queryFactory
                 .select(Projections.constructor(
@@ -153,16 +162,29 @@ public class SubTaskDbWithDsl {
                         subTask.isDeleted
                 ))
                 .from(subTask)
-                .where(predicate)
+                .join(subTask.task, qTask)              // ✅ alias unik
+                .join(qTask.stage, qStage)
+                .join(qStage.project, qProject)
+                .join(qProject.projectManager, qPM)
+                .leftJoin(qProject.memberInProjectList, qMIP)
+                .leftJoin(qMIP.projectMember, qMember)
+                .where(predicate.and(authFilter))
                 .orderBy(orders)
+                .distinct()
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
         Long total = queryFactory
-                .select(subTask.count())
+                .select(subTask.countDistinct())
                 .from(subTask)
-                .where(predicate)
+                .join(subTask.task, qTask)              // ✅ JOIN sama dengan query utama
+                .join(qTask.stage, qStage)
+                .join(qStage.project, qProject)
+                .join(qProject.projectManager, qPM)
+                .leftJoin(qProject.memberInProjectList, qMIP)
+                .leftJoin(qMIP.projectMember, qMember)
+                .where(predicate.and(authFilter))
                 .fetchOne();
 
         return new PageImpl<>(results, pageable, total == null ? 0 : total);

@@ -4,8 +4,9 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Objects;
 
+import com.ta.managementproject.dto.request.UpdateStatusRequestDTO;
 import com.ta.managementproject.exception.ConflictException;
-import com.ta.managementproject.repository.SubTaskDbWithDsl;
+import com.ta.managementproject.repository.*;
 import com.ta.managementproject.service.UtilService;
 import com.ta.managementproject.service.auth.AuthService;
 import com.ta.managementproject.service.user.UserService;
@@ -21,9 +22,6 @@ import com.ta.managementproject.dto.response.CrudResponseDTO;
 import com.ta.managementproject.dto.response.SubTaskResponseDTO;
 import com.ta.managementproject.entity.SubTask;
 import com.ta.managementproject.entity.Task;
-import com.ta.managementproject.repository.MemberInProjectDb;
-import com.ta.managementproject.repository.SubTaskDb;
-import com.ta.managementproject.repository.TaskDb;
 import com.ta.managementproject.security.util.JwtUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +37,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     private final UserService userService;
     private final AuthService authService;
     private final UtilService utilService;
+    private final ProjectMemberDb projectMemberDb;
 
     private final SubTaskDbWithDsl subTaskDbWithDsl;
 
@@ -50,7 +49,8 @@ public class SubTaskServiceImpl implements SubTaskService{
             UserService userService,
             AuthService authService,
             UtilService utilService,
-            SubTaskDbWithDsl subTaskDbWithDsl
+            SubTaskDbWithDsl subTaskDbWithDsl,
+            ProjectMemberDb projectMemberDb
     ) {
         this.subTaskDb = subTaskDb;
         this.taskDb = taskDb;
@@ -60,6 +60,7 @@ public class SubTaskServiceImpl implements SubTaskService{
         this.authService = authService;
         this.utilService = utilService;
         this.subTaskDbWithDsl = subTaskDbWithDsl;
+        this.projectMemberDb = projectMemberDb;
     }
 
     @Override // Total CYC: 21, LOC: 145, COG: 15
@@ -106,7 +107,7 @@ public class SubTaskServiceImpl implements SubTaskService{
                 .dueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                 .status("TODO")
                 .label(requestDTO.getLabel())
-                .projectMember(requestDTO.getProjectMember())
+                .projectMember(projectMemberDb.findByEmail(requestDTO.getProjectMember()))
                 .task(task)
                 .order(currentTotal + 1)
                 .isDeleted(false)
@@ -135,7 +136,7 @@ public class SubTaskServiceImpl implements SubTaskService{
         subTask.setDescription(requestDTO.getDescription() != null ? requestDTO.getDescription() : subTask.getDescription());
         subTask.setDueDate(requestDTO.getDueDate() != null ? requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant() : subTask.getDueDate());
         subTask.setLabel(requestDTO.getLabel() != null ? requestDTO.getLabel() : subTask.getLabel());
-        subTask.setProjectMember(requestDTO.getProjectMember() != null ? requestDTO.getProjectMember() : subTask.getProjectMember());
+        subTask.setProjectMember(requestDTO.getProjectMember() != null ? projectMemberDb.findByEmail(requestDTO.getProjectMember()) : subTask.getProjectMember());
 
         SubTask updatedSubTask = subTaskDb.save(subTask);
 
@@ -212,7 +213,7 @@ public class SubTaskServiceImpl implements SubTaskService{
 
     @Override // Total CYC: 20, LOC: 127, COG: 12
     @Transactional
-    public ResponseEntity<?> updateSubTaskStatus(String subTaskId, CreateUpdateSubTaskRequestDTO requestDTO) { // CYC: 1, LOC: 13, COG: 0
+    public ResponseEntity<?> updateSubTaskStatus(String subTaskId, UpdateStatusRequestDTO requestDTO) { // CYC: 1, LOC: 13, COG: 0
         SubTask subTask = authService.validateSubTask(subTaskId); // CYC: 2, LOC: 8, COG: 1
         authService.validateManagerAndMemberAccess(subTask.getTask().getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 1, LOC: 3, COG: 0

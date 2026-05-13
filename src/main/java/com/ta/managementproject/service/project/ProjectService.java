@@ -1,6 +1,7 @@
 package com.ta.managementproject.service.project;
 
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
+import com.ta.managementproject.dto.request.JoinProjectRequestDTO;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
@@ -16,7 +17,7 @@ public interface ProjectService {
 
     ResponseEntity<?> generateJoinCode(String kodeProyek);
 
-    ResponseEntity<?> joinProject(String joinCode);
+    ResponseEntity<?> joinProject(JoinProjectRequestDTO joinProjectRequestDTO);
 
     ResponseEntity<?> cancelProject(String projectId);
 }

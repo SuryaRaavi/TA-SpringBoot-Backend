@@ -25,7 +25,7 @@ public class TaskRestController{
     public ResponseEntity<?> getAllTask( // CYC: 1, LOC: 34, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
-            @PageableDefault(size = 10, page = 0) Pageable pageable,
+            @PageableDefault(size = 20, page = 0) Pageable pageable,
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -113,12 +113,12 @@ public class TaskRestController{
     }
 
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 18, LOC: 119, COG: 8
-    @PatchMapping("/update-status")
+    @PatchMapping("/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus( // CYC: 1, LOC: 10, COG: 0
             @PathVariable String projectId,
             @PathVariable String stageId,
             @PathVariable String taskId,
-            @Valid @RequestBody CreateUpdateTaskRequestDTO requestDTO
+            @Valid @RequestBody UpdateStatusRequestDTO requestDTO
     ){
         return taskService.updateTaskStatus(taskId, requestDTO); // CYC: 17, LOC: 109, COG: 8
     }

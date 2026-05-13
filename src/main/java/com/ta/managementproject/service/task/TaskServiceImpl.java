@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Objects;
 
+import com.ta.managementproject.dto.request.UpdateStatusRequestDTO;
 import com.ta.managementproject.exception.ConflictException;
 import com.ta.managementproject.repository.*;
 import com.ta.managementproject.service.UtilService;
@@ -118,7 +119,7 @@ public class TaskServiceImpl implements TaskService {
                     .priority(requestDTO.getPriority())
                     .dueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant())
                     .status("TODO")
-                    .projectMember(requestDTO.getProjectMember())
+                    .projectMember(projectMemberDb.findByEmail(requestDTO.getProjectMember()))
                     .stage(stage)
                     .order(currentTotal + 1)
                     .isDeleted(false)
@@ -145,7 +146,7 @@ public class TaskServiceImpl implements TaskService {
         task.setDescription(requestDTO.getDescription());
         task.setPriority(requestDTO.getPriority());
         task.setDueDate(requestDTO.getDueDate().atStartOfDay(ZoneOffset.UTC).toInstant());
-        task.setProjectMember(requestDTO.getProjectMember());
+        task.setProjectMember(projectMemberDb.findByEmail(requestDTO.getProjectMember()));
 
         Task updatedTask = taskDb.save(task);
 
@@ -221,7 +222,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override // Total CYC: 17, LOC: 109, COG: 8
     @Transactional
-    public ResponseEntity<?> updateTaskStatus(String taskId, CreateUpdateTaskRequestDTO requestDTO) { // CYC: 2, LOC: 15, COG: 1
+    public ResponseEntity<?> updateTaskStatus(String taskId, UpdateStatusRequestDTO requestDTO) { // CYC: 2, LOC: 15, COG: 1
         Task task = authService.validateTask(taskId);  // CYC: 2, LOC: 8, COG: 1
         authService.validateManagerAndMemberAccess(task.getStage().getProject(), JwtUtils.getCurrentEmail());
         // CYC: 1, LOC: 3, COG: 0

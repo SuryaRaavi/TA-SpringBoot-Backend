@@ -19,78 +19,97 @@ public class ManagementprojectApplication {
 		SpringApplication.run(ManagementprojectApplication.class, args);
 	}
 
-//	@Bean
-//	@Transactional
-//	CommandLineRunner run(
-//		RoleDb roleDb, ProjectManagerDb projectManagerDb, ProjectMemberDb projectMemberDb, ProjectDb projectDb,
-//		StageDb stageDb, UserService userService
-//	){
-//		return args -> {
-//			Role role1 = Role.builder().id(1).name("PROJECT_MANAGER").build();
-//			Role role2 = Role.builder().id(2).name("PROJECT_MEMBER").build();
-//			if (roleDb.findAll().isEmpty()) {
-//				roleDb.saveAll(List.of(role1, role2));
-//			}
-//
+	@Bean
+	@Transactional
+	CommandLineRunner run(
+		RoleDb roleDb, ProjectManagerDb projectManagerDb, ProjectMemberDb projectMemberDb, ProjectDb projectDb,
+		StageDb stageDb, UserService userService
+	){
+		return args -> {
+			Role role1 = Role.builder().id(1).name("PROJECT_MANAGER").build();
+			Role role2 = Role.builder().id(2).name("PROJECT_MEMBER").build();
+			if (roleDb.findAll().isEmpty()) {
+				roleDb.saveAll(List.of(role1, role2));
+			}
+
 //			RegisterRequestDTO pm1 = RegisterRequestDTO.builder()
-//					.email("pm1@gmail.com")
+//					.email("manager@test.com")
 //					.role(1)
 //					.fullName("Project Manager 1")
-//					.password("pm123456")
+//					.password("password123")
 //					.build();
 //
-//			RegisterRequestDTO pm2 = RegisterRequestDTO.builder()
-//					.email("pm2@gmail.com")
-//					.role(1)
-//					.fullName("Project Manager 2")
-//					.password("pm123456")
-//					.build();
+////			RegisterRequestDTO pm2 = RegisterRequestDTO.builder()
+////					.email("pm2@gmail.com")
+////					.role(1)
+////					.fullName("Project Manager 2")
+////					.password("password123")
+////					.build();
 //
 //			RegisterRequestDTO pmb1 = RegisterRequestDTO.builder()
-//					.email("pmb1@gmail.com")
+//					.email("member1@gmail.com")
 //					.role(2)
-//					.fullName("Project Member 1")
-//					.password("pmb123456")
+//					.password("password123")
 //					.build();
 //
 //			RegisterRequestDTO pmb2 = RegisterRequestDTO.builder()
-//					.email("pmb2@gmail.com")
+//					.email("member2@gmail.com")
 //					.role(2)
-//					.fullName("Project Member 2")
-//					.password("pm123456")
+//					.password("password123")
 //					.build();
 //
 //			RegisterRequestDTO pmb3 = RegisterRequestDTO.builder()
-//					.email("pmb3@gmail.com")
+//					.email("member3@gmail.com")
 //					.role(2)
-//					.fullName("Project Member 3")
-//					.password("pmb123456")
+//					.password("password123")
 //					.build();
 //
 //			RegisterRequestDTO pmb4 = RegisterRequestDTO.builder()
-//					.email("pmb4@gmail.com")
+//					.email("member4@gmail.com")
 //					.role(2)
-//					.fullName("Project Member 4")
-//					.password("pm123456")
+//					.password("password123")
 //					.build();
 //
 //			RegisterRequestDTO pmb5 = RegisterRequestDTO.builder()
-//					.email("pmb5@gmail.com")
+//					.email("member5@gmail.com")
 //					.role(2)
-//					.fullName("Project Member 5")
-//					.password("pmb123456")
+//					.password("password123")
 //					.build();
 //
 //			RegisterRequestDTO pmb6 = RegisterRequestDTO.builder()
-//					.email("pmb6@gmail.com")
+//					.email("member6@gmail.com")
 //					.role(2)
-//					.fullName("Project Member 6")
-//					.password("pm123456")
+//					.password("password123")
 //					.build();
+//
+//			RegisterRequestDTO pmb7 = RegisterRequestDTO.builder()
+//					.email("member7@gmail.com")
+//					.role(2)
+//					.password("password123")
+//					.build();
+//
+//			RegisterRequestDTO pmb8 = RegisterRequestDTO.builder()
+//					.email("member8@gmail.com")
+//					.role(2)
+//					.password("password123")
+//					.build();
+//
+//			RegisterRequestDTO pmb9 = RegisterRequestDTO.builder()
+//					.email("member9@gmail.com")
+//					.role(2)
+//					.password("password123")
+//					.build();
+//
+//			RegisterRequestDTO pmb10 = RegisterRequestDTO.builder()
+//					.email("member10@gmail.com")
+//					.role(2)
+//					.password("password123")
+//					.build();
+//
 //
 //			if (projectManagerDb.findAll().isEmpty()) {
 //				userService.addNewUser(pm1);
-//				userService.addNewUser(pm2);
+////				userService.addNewUser(pm2);
 //			}
 //
 //			if (projectMemberDb.findAll().isEmpty()) {
@@ -100,13 +119,16 @@ public class ManagementprojectApplication {
 //				userService.addNewUser(pmb4);
 //				userService.addNewUser(pmb5);
 //				userService.addNewUser(pmb6);
+//				userService.addNewUser(pmb7);
+//				userService.addNewUser(pmb8);
+//				userService.addNewUser(pmb9);
+//				userService.addNewUser(pmb10);
 //			}
 //
 //			Project project1 = Project.builder()
 //					.projectName("Project 1")
 //					.projectManager(projectManagerDb.findByEmail("pm.1"))
 //					.description("Description for project 1")
-//
 //					.build();
 //
 //			Project project2 = Project.builder()
@@ -120,28 +142,28 @@ public class ManagementprojectApplication {
 //			}
 //
 //			Stage stage1 = Stage.builder()
-//					.stageName("Stage 1 for Project 1")
+//					.stageName("Stage 11")
 //					.description("Description of stage 1 for project 1")
 //					.project(project1)
 //					.order(1)
 //					.build();
 //
 //			Stage stage2 = Stage.builder()
-//					.stageName("Stage 2 for Project 1")
+//					.stageName("Stage 21")
 //					.description("Description of stage 2 for project 1")
 //					.project(project1)
 //					.order(2)
 //					.build();
 //
 //			Stage stage3 = Stage.builder()
-//					.stageName("Stage 1 for Project 2")
+//					.stageName("Stage 12")
 //					.description("Description of stage 1 for project 2")
 //					.project(project2)
 //					.order(1)
 //					.build();
 //
 //			Stage stage4 = Stage.builder()
-//					.stageName("Stage 2 for Project 2")
+//					.stageName("Stage 22")
 //					.description("Description of stage 2 for project 2")
 //					.project(project2)
 //					.order(2)
@@ -150,8 +172,14 @@ public class ManagementprojectApplication {
 //			if (stageDb.findAll().isEmpty()) {
 //				stageDb.saveAll(List.of(stage1, stage2, stage3, stage4));
 //			}
-//		};
-//	}
+//
+//			Task task1 = Task.builder()
+//					.taskName("Task 111")
+//					.description("Task")
+//					.stage(stage1)
+//					.
+		};
+	}
 
 
 }

@@ -2,6 +2,7 @@ package com.ta.managementproject;
 
 import com.ta.managementproject.dto.request.CreateUpdateSubTaskRequestDTO;
 import com.ta.managementproject.dto.request.ReorderRequestDTO;
+import com.ta.managementproject.dto.request.UpdateStatusRequestDTO;
 import com.ta.managementproject.dto.response.SubTaskResponseDTO;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.exception.ConflictException;
@@ -123,7 +124,7 @@ class SubTaskServiceTest {
         mockRequest.setDescription("SubTask desc");
         mockRequest.setDueDate(LocalDate.of(2024, 6, 30));
         mockRequest.setLabel("label-1");
-        mockRequest.setProjectMember(mockProjectMember);
+        mockRequest.setProjectMember(mockProjectMember.getEmail());
     }
 
     @AfterEach
@@ -706,7 +707,7 @@ class SubTaskServiceTest {
 
     @Test
     void updateSubTaskStatus_ShouldReturnOk_WhenValidRequest() {
-        mockRequest.setStatus("IN_PROGRESS");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("IN_PROGRESS");
 
         when(authService.validateSubTask("subtask-1")).thenReturn(mockSubTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -717,14 +718,14 @@ class SubTaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        ResponseEntity<?> result = subTaskService.updateSubTaskStatus("subtask-1", mockRequest);
+        ResponseEntity<?> result = subTaskService.updateSubTaskStatus("subtask-1", mockStatus);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void updateSubTaskStatus_ShouldUpdateStatus_WhenValidRequest() {
-        mockRequest.setStatus("DONE");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("DONE");
 
         when(authService.validateSubTask("subtask-1")).thenReturn(mockSubTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -735,14 +736,14 @@ class SubTaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        subTaskService.updateSubTaskStatus("subtask-1", mockRequest);
+        subTaskService.updateSubTaskStatus("subtask-1", mockStatus);
 
         verify(subTaskDb).save(argThat(subTask -> "DONE".equals(subTask.getStatus())));
     }
 
     @Test
     void updateSubTaskStatus_ShouldCallUpdateTaskStatusAndAllSummaries() {
-        mockRequest.setStatus("IN_PROGRESS");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("IN_PROGRESS");
 
         when(authService.validateSubTask("subtask-1")).thenReturn(mockSubTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -753,7 +754,7 @@ class SubTaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        subTaskService.updateSubTaskStatus("subtask-1", mockRequest);
+        subTaskService.updateSubTaskStatus("subtask-1", mockStatus);
 
         verify(utilService, times(1)).updateTaskStatusAndSummary("task-1");
         verify(utilService, times(1)).updateStageSummary("stage-1");
@@ -762,18 +763,18 @@ class SubTaskServiceTest {
 
     @Test
     void updateSubTaskStatus_ShouldThrowNotFoundException_WhenSubTaskNotFound() {
-        mockRequest.setStatus("DONE");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("DONE");
 
         when(authService.validateSubTask("subtask-x"))
                 .thenThrow(new NotFoundException("SUBTASK_NOT_FOUND"));
 
         assertThrows(NotFoundException.class, () ->
-                subTaskService.updateSubTaskStatus("subtask-x", mockRequest));
+                subTaskService.updateSubTaskStatus("subtask-x", mockStatus));
     }
 
     @Test
     void updateSubTaskStatus_ShouldCallValidateManagerAndMemberAccess() {
-        mockRequest.setStatus("IN_PROGRESS");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("IN_PROGRESS");
 
         when(authService.validateSubTask("subtask-1")).thenReturn(mockSubTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -784,7 +785,7 @@ class SubTaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        subTaskService.updateSubTaskStatus("subtask-1", mockRequest);
+        subTaskService.updateSubTaskStatus("subtask-1", mockStatus);
 
         verify(authService, times(1))
                 .validateManagerAndMemberAccess(eq(mockProject), eq("manager1@example.com"));
@@ -792,7 +793,7 @@ class SubTaskServiceTest {
 
     @Test
     void updateSubTaskStatus_ShouldCallValidateProjectCancellation() {
-        mockRequest.setStatus("DONE");
+        UpdateStatusRequestDTO mockStatus = new UpdateStatusRequestDTO("DONE");
 
         when(authService.validateSubTask("subtask-1")).thenReturn(mockSubTask);
         doNothing().when(authService).validateManagerAndMemberAccess(any(), anyString());
@@ -803,7 +804,7 @@ class SubTaskServiceTest {
         doNothing().when(utilService).updateProjectSummary(anyString());
         stubBuildResponse(HttpStatus.OK);
 
-        subTaskService.updateSubTaskStatus("subtask-1", mockRequest);
+        subTaskService.updateSubTaskStatus("subtask-1", mockStatus);
 
         verify(authService, times(1)).validateProjectCancellation(eq(mockProject));
     }

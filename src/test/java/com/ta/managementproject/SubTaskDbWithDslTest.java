@@ -49,7 +49,6 @@ class SubTaskDbWithDslTest {
                     LocalDate createdAt,
                     LocalDate updatedAt,
                     Integer order,
-                    String email,
                     String keyword
             ) {
                 return new BooleanBuilder();

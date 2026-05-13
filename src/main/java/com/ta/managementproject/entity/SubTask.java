@@ -31,7 +31,6 @@ public class SubTask {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "due_date", nullable = false)
     private Instant dueDate;
 
     @Column(name = "status", nullable = false)
@@ -40,7 +39,7 @@ public class SubTask {
     @Column(name = "label")
     private String label;
 
-    @Column(name = "sub_task_order", unique = true)
+    @Column(name = "sub_task_order", nullable = false)
     private Integer order;
 
     @Column(name = "is_deleted", nullable = false)

@@ -18,5 +18,5 @@ public class BaseResponseDTO<T> {
     @JsonFormat(shape = JsonFormat.Shape.STRING, timezone = "Asia/Jakarta")
     private Date timestamp;
 
-    private T Data;
+    private T data;
 }

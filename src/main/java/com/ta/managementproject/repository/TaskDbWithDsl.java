@@ -6,7 +6,7 @@ import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ta.managementproject.dto.response.TaskResponseDTO;
-import com.ta.managementproject.entity.QTask;
+import com.ta.managementproject.entity.*;
 import com.ta.managementproject.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,7 +26,15 @@ import java.util.List;
 public class TaskDbWithDsl {
     private final JPAQueryFactory queryFactory;
     private final QTask task = QTask.task;
+    private final QStage qStage = new QStage("qStage");
+    private final QProject qProject = new QProject("qProject");
+    private final QProjectManager qPM = new QProjectManager("qPM");
+    private final QMemberInProject qMIP = new QMemberInProject("qMIP");
+    private final QProjectMember qMember = new QProjectMember("qMember");
 
+    // ✅ Treat subclass ke parent QUser untuk akses field email
+    private final QUser qPMAsUser = new QUser("qPM");        // alias HARUS sama dengan qPM
+    private final QUser qMemberAsUser = new QUser("qMember"); // alias HARUS sama dengan qMember
     private static List<String> SORTING_COLUMNS = List.of
             ("taskName", "order", "createdAt", "updatedAt", "dueDate", "priority");
 
@@ -84,16 +92,11 @@ public class TaskDbWithDsl {
             LocalDate updatedAt,
             Integer priority,
             Integer order,
-            String email,
             String keyword
     ){
         BooleanBuilder builder = new BooleanBuilder();
 
         builder.and(task.stage.stageId.eq(stageId));
-        builder.and(
-                task.stage.project.projectManager.email.eq(email)
-                .or(task.stage.project.memberInProjectList.any().projectMember.email.eq(email))
-        );
 
         if (dueDate != null) {
             Instant instant = dueDate.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -142,8 +145,13 @@ public class TaskDbWithDsl {
             Pageable pageable
     ){
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // // CYC: 11, LOC: 32, COG: 9
-        BooleanBuilder predicate = buildDynamicFilter
-                (stageId, dueDate, createdAt, updatedAt, priority, order, email, keyword); // // CYC: 7, LOC: 43, COG: 6
+        BooleanBuilder predicate = buildDynamicFilter(
+                stageId, dueDate, createdAt, updatedAt, priority, order, keyword);
+
+        // ✅ Authorization filter pakai QUser alias yang sama dengan join alias
+        BooleanBuilder authFilter = new BooleanBuilder(
+                qPMAsUser.email.eq(email).or(qMemberAsUser.email.eq(email))
+        );
 
         List<TaskResponseDTO> results = queryFactory
                 .select(Projections.constructor(
@@ -162,16 +170,27 @@ public class TaskDbWithDsl {
                         task.isDeleted
                 ))
                 .from(task)
-                .where(predicate)
+                .join(task.stage, qStage)
+                .join(qStage.project, qProject)
+                .join(qProject.projectManager, qPM)         // join sebagai QProjectManager
+                .leftJoin(qProject.memberInProjectList, qMIP)
+                .leftJoin(qMIP.projectMember, qMember)      // join sebagai QProjectMember
+                .where(predicate.and(authFilter))
                 .orderBy(orders)
+                .distinct()
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
         Long total = queryFactory
-                .select(task.count())
+                .select(task.countDistinct())
                 .from(task)
-                .where(predicate)
+                .join(task.stage, qStage)
+                .join(qStage.project, qProject)
+                .join(qProject.projectManager, qPM)
+                .leftJoin(qProject.memberInProjectList, qMIP)
+                .leftJoin(qMIP.projectMember, qMember)
+                .where(predicate.and(authFilter))
                 .fetchOne();
 
         return new PageImpl<>(results, pageable, total == null ? 0 : total);

@@ -1,13 +1,11 @@
 package com.ta.managementproject.security.util;
 
 
-import com.ta.managementproject.enums.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,7 +13,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import org.slf4j.Logger;
-import org.springframework.util.StringUtils;
 
 @Component
 public class JwtUtils {

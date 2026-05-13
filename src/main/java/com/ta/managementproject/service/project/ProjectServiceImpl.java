@@ -1,6 +1,7 @@
 package com.ta.managementproject.service.project;
 
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
+import com.ta.managementproject.dto.request.JoinProjectRequestDTO;
 import com.ta.managementproject.dto.response.*;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.exception.BadRequestException;
@@ -193,15 +194,21 @@ public class ProjectServiceImpl implements ProjectService {
         return utilService.buildResponse(HttpStatus.CREATED, "SUCCESS", project.getJoinCode());
     }
 
-    @Override // Total CYC: 10, LOC: 48, COG: 5
-    public ResponseEntity<?> joinProject(String joinCode) { // CYC: 3, LOC: 21, COG: 2
+    @Override // Total CYC: 11, LOC: 48, COG: 6
+    public ResponseEntity<?> joinProject(JoinProjectRequestDTO requestDTO) { // CYC: 4, LOC: 26, COG: 3
         String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
         ProjectMember pmb = projectMemberDb.findByEmail(email);
-        Project project = projectDb.findByJoinCode(joinCode);
+        Project project = projectDb.findByJoinCode(requestDTO.getJoinCode());
 
         if (project == null){
             throw new NotFoundException("PROJECT_NOT_FOUND!");
+        }
+
+        if (project.getMemberInProjectList().stream().anyMatch(
+                memberInProject -> memberInProject.getProjectMember().getEmail().equals(pmb.getEmail())
+        )){
+            throw new ConflictException("Already joined in project");
         }
 
         authService.validateProjectCancellation(project); // CYC: 2, LOC: 6, COG: 1
@@ -230,7 +237,7 @@ public class ProjectServiceImpl implements ProjectService {
         String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
         authService.validateManagerAccess(project, email); // CYC: 2, LOC: 6, COG: 1
 
-        Project cancelledProject = projectDb.save(project.toBuilder().isCancelled(true).build());
+        Project cancelledProject = projectDb.save(project.toBuilder().isCancelled(!project.isCancelled()).build());
 
         // CYC: 1, LOC: 9, COG: 0
         return utilService.buildResponse(HttpStatus.OK, "SUCCESS", assignToDto(cancelledProject)); // CYC: 1, LOC: 20, COG: 0

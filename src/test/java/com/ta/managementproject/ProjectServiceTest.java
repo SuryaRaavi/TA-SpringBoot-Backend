@@ -1,6 +1,7 @@
 package com.ta.managementproject;
 
 import com.ta.managementproject.dto.request.CreateUpdateProjectRequestDTO;
+import com.ta.managementproject.dto.request.JoinProjectRequestDTO;
 import com.ta.managementproject.dto.response.ProjectResponseDTO;
 import com.ta.managementproject.entity.*;
 import com.ta.managementproject.exception.BadRequestException;
@@ -386,7 +387,7 @@ class ProjectServiceTest {
     @Test
     void joinProject_ShouldReturnCreated_WhenJoinCodeValid() {
         Project validCodeProject = mockProject.toBuilder()
-                .joinCode("validcode1234")
+                .joinCode("validcode1234567")
                 .joinCodeExpiredAt(Instant.now().plusSeconds(86400))
                 .build();
 
@@ -394,12 +395,12 @@ class ProjectServiceTest {
         pmb.setEmail("manager1@example.com");
 
         when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(pmb);
-        when(projectDb.findByJoinCode("validcode1234")).thenReturn(validCodeProject);
+        when(projectDb.findByJoinCode("validcode1234567")).thenReturn(validCodeProject);
         doNothing().when(authService).validateProjectCancellation(any());
         when(memberInProjectDb.save(any())).thenReturn(new MemberInProject());
         stubBuildResponse(HttpStatus.CREATED);
 
-        ResponseEntity<?> result = projectService.joinProject("validcode1234");
+        ResponseEntity<?> result = projectService.joinProject(new JoinProjectRequestDTO("validcode1234567"));
 
         assertEquals(HttpStatus.CREATED, result.getStatusCode());
     }
@@ -407,26 +408,26 @@ class ProjectServiceTest {
     @Test
     void joinProject_ShouldThrowNotFoundException_WhenJoinCodeNotFound() {
         when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(new ProjectMember());
-        when(projectDb.findByJoinCode("invalidcode")).thenReturn(null);
+        when(projectDb.findByJoinCode("invalidcode12345")).thenReturn(null);
 
         assertThrows(NotFoundException.class, () ->
-                projectService.joinProject("invalidcode"));
+                projectService.joinProject(new JoinProjectRequestDTO("invalidcode12345")));
     }
 
     @Test
     void joinProject_ShouldThrowUnprocessableContentException_WhenJoinCodeExpired() {
         when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(new ProjectMember());
-        when(projectDb.findByJoinCode("expiredcode")).thenReturn(mockProject);
+        when(projectDb.findByJoinCode("expiredcode12345")).thenReturn(mockProject);
         doNothing().when(authService).validateProjectCancellation(any());
 
         assertThrows(UnprocessableContentException.class, () ->
-                projectService.joinProject("expiredcode"));
+                projectService.joinProject(new JoinProjectRequestDTO("expiredcode12345")));
     }
 
     @Test
     void joinProject_ShouldCallMemberInProjectDbSave_WhenJoinCodeValid() {
         Project validCodeProject = mockProject.toBuilder()
-                .joinCode("validcode1234")
+                .joinCode("validcode1234567")
                 .joinCodeExpiredAt(Instant.now().plusSeconds(86400))
                 .build();
 
@@ -434,12 +435,12 @@ class ProjectServiceTest {
         pmb.setEmail("manager1@example.com");
 
         when(projectMemberDb.findByEmail("manager1@example.com")).thenReturn(pmb);
-        when(projectDb.findByJoinCode("validcode1234")).thenReturn(validCodeProject);
+        when(projectDb.findByJoinCode("validcode1234567")).thenReturn(validCodeProject);
         doNothing().when(authService).validateProjectCancellation(any());
         when(memberInProjectDb.save(any())).thenReturn(new MemberInProject());
         stubBuildResponse(HttpStatus.CREATED);
 
-        projectService.joinProject("validcode1234");
+        projectService.joinProject(new JoinProjectRequestDTO("validcode1234567"));
 
         verify(memberInProjectDb, times(1)).save(any(MemberInProject.class));
     }
