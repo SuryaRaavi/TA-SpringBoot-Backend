@@ -20,7 +20,7 @@ public class TaskRestController{
     @Autowired
     private TaskService taskService;
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 24, LOC: 188, COG: 16
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 24, LOC: 198, COG: 16
     @GetMapping("")
     public ResponseEntity<?> getAllTask( // CYC: 1, LOC: 34, COG: 0
             @PathVariable String projectId,
@@ -49,7 +49,7 @@ public class TaskRestController{
 
             @RequestParam(required = false) String keyword
     ){
-        return taskService.getAllTask( // CYC: 23, LOC: 154, COG: 16
+        return taskService.getAllTask( // CYC: 23, LOC: 164, COG: 16
                 pageable,
                 stageId,
                 dueDate,

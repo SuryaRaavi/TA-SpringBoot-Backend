@@ -85,7 +85,7 @@ public class TaskDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    protected BooleanBuilder buildDynamicFilter( // CYC: 7, LOC: 43, COG: 6
+    protected BooleanBuilder buildDynamicFilter( // CYC: 7, LOC: 38, COG: 6
             String stageId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -132,8 +132,8 @@ public class TaskDbWithDsl {
         return builder;
     }
 
-    // Total CYC: 20, LOC: 117, COG: 16
-    public Page<TaskResponseDTO> findAll( // CYC: 2, LOC: 42, COG: 1
+    // Total CYC: 20, LOC: 127, COG: 16
+    public Page<TaskResponseDTO> findAll( // CYC: 2, LOC: 57, COG: 1
             String stageId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -144,9 +144,9 @@ public class TaskDbWithDsl {
             String email,
             Pageable pageable
     ){
-        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // // CYC: 11, LOC: 32, COG: 9
+        OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 11, LOC: 32, COG: 9
         BooleanBuilder predicate = buildDynamicFilter(
-                stageId, dueDate, createdAt, updatedAt, priority, order, keyword);
+                stageId, dueDate, createdAt, updatedAt, priority, order, keyword); // CYC: 7, LOC: 38, COG: 6
 
         // ✅ Authorization filter pakai QUser alias yang sama dengan join alias
         BooleanBuilder authFilter = new BooleanBuilder(

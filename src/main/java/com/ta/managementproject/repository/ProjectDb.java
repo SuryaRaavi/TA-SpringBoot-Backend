@@ -60,7 +60,7 @@ public interface ProjectDb extends JpaRepository<Project, String>{
                 INNER JOIN t.subTaskList st
                 WHERE p.projectId = :projectId
             """)
-    ProgressResponseDTO getSummaryFromSubTasks(@Param("projectId") String projectId);
+    ProgressResponseDTO getSummaryFromSubTasks(@Param("projectId") String projectId); // Total CYC: 0, LOC: 18, COG: 0
 
     // Query 2: ambil task yang TIDAK PUNYA subtask
     // progress dihitung dari status task langsung

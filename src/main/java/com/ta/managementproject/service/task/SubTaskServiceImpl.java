@@ -63,7 +63,7 @@ public class SubTaskServiceImpl implements SubTaskService{
         this.projectMemberDb = projectMemberDb;
     }
 
-    @Override // Total CYC: 21, LOC: 145, COG: 15
+    @Override // Total CYC: 21, LOC: 156, COG: 15
     public ResponseEntity<?> getAllSubTask( // CYC: 1, LOC: 23, COG: 0
             String taskId,
             LocalDate dueDate,
@@ -75,7 +75,7 @@ public class SubTaskServiceImpl implements SubTaskService{
     ) {
         String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
-        Page<SubTaskResponseDTO> subTasks = subTaskDbWithDsl.findAll( // CYC: 18, LOC: 110, COG: 15
+        Page<SubTaskResponseDTO> subTasks = subTaskDbWithDsl.findAll( // CYC: 18, LOC: 121, COG: 15
                 taskId,
                 dueDate,
                 createdAt,

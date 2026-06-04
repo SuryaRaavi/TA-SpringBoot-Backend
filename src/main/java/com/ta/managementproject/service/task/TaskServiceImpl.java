@@ -73,7 +73,7 @@ public class TaskServiceImpl implements TaskService {
         this.taskDbWithDsl = taskDbWithDsl;
     }
 
-    @Override // Total CYC: 23, LOC: 154, COG: 16
+    @Override // Total CYC: 23, LOC: 164, COG: 16
     public ResponseEntity<?> getAllTask( // CYC: 1, LOC: 25, COG: 0
             Pageable pageable,
             String stageId,
@@ -86,7 +86,7 @@ public class TaskServiceImpl implements TaskService {
     ) {
         String email = JwtUtils.getCurrentEmail(); // CYC: 1, LOC: 3, COG: 0
 
-        Page<TaskResponseDTO> tasks = taskDbWithDsl.findAll( // CYC: 20, LOC: 117, COG: 16
+        Page<TaskResponseDTO> tasks = taskDbWithDsl.findAll( // CYC: 20, LOC: 127, COG: 16
                 stageId,
                 dueDate,
                 createdAt,

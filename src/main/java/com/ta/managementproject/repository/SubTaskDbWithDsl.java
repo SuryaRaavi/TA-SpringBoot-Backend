@@ -84,7 +84,7 @@ public class SubTaskDbWithDsl {
         return orders.toArray(new OrderSpecifier[0]);
     }
 
-    protected BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 39, COG: 5
+    protected BooleanBuilder buildDynamicFilter( // CYC: 6, LOC: 34, COG: 5
             String taskId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -126,8 +126,8 @@ public class SubTaskDbWithDsl {
         return builder;
     }
 
-    // Total CYC: 18, LOC: 110, COG: 15
-    public Page<SubTaskResponseDTO> findAll( // CYC: 2, LOC: 42, COG: 1
+    // Total CYC: 18, LOC: 121, COG: 15
+    public Page<SubTaskResponseDTO> findAll( // CYC: 2, LOC: 58, COG: 1
             String taskId,
             LocalDate dueDate,
             LocalDate createdAt,
@@ -139,7 +139,7 @@ public class SubTaskDbWithDsl {
     ){
         OrderSpecifier<?>[] orders = getOrderSpecifiers(pageable); // CYC: 10, LOC: 29, COG: 9
         BooleanBuilder predicate = buildDynamicFilter
-                (taskId, dueDate, createdAt, updatedAt, order, keyword); // CYC: 6, LOC: 39, COG: 5
+                (taskId, dueDate, createdAt, updatedAt, order, keyword); // CYC: 6, LOC: 34, COG: 5
 
         BooleanBuilder authFilter = new BooleanBuilder(
                 qPMAsUser.email.eq(email).or(qMemberAsUser.email.eq(email))

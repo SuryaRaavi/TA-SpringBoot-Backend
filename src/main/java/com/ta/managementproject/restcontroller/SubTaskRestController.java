@@ -20,7 +20,7 @@ public class SubTaskRestController {
     @Autowired
     private SubTaskService subTaskService;
 
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 22, LOC: 174, COG: 15
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'PROJECT_MEMBER')") // Total CYC: 22, LOC: 185, COG: 15
     @GetMapping("")
     public ResponseEntity<?> getAllSubTask( // CYC: 1, LOC: 29, COG: 0
             @PathVariable String projectId,
@@ -44,7 +44,7 @@ public class SubTaskRestController {
 
             @RequestParam(required = false) String keyword
     ){
-        return subTaskService.getAllSubTask( // CYC: 21, LOC: 145, COG: 15
+        return subTaskService.getAllSubTask( // CYC: 21, LOC: 156, COG: 15
                 taskId,
                 dueDate,
                 createdAt,
